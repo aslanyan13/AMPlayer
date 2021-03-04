@@ -1,2 +1,2 @@
-# amp
+# Project AMP
 Aslanyan Music Player
