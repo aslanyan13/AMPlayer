@@ -8,6 +8,8 @@
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMenu>
+#include <QMouseEvent>
+#include <QMouseEventTransition>
 #include <QPainter>
 #include <QLabel>
 #include <QSlider>
@@ -71,6 +73,7 @@ private:
     QLabel * songTitle;
     QLabel * songDuration;
     QLabel * songPosition;
+    QLabel * timecode;
     QSlider * volumeSlider;
 
     QPushButton * repeatBtn;
@@ -85,26 +88,9 @@ private:
     void prerenderFft ();
 
     void paintEvent(QPaintEvent * event);
-    void keyPressEvent(QKeyEvent *ev)
-    {
-        QWORD pos = BASS_ChannelGetPosition(channel, BASS_POS_BYTE);
-        double current_time = BASS_ChannelBytes2Seconds(channel, pos);
-
-        cout << "You Pressed Key " << ev->key() << endl;
-
-        if (channel != NULL) {
-            // Right
-            if (ev->key() == 16777236) {
-                double new_time = current_time + 5;
-                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
-            }
-            // Left
-            if (ev->key() == 16777234) {
-                double new_time = current_time - 5;
-                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
-            }
-        }
-    }
+    void keyPressEvent(QKeyEvent * event) {};
+    void mousePressEvent (QMouseEvent * event);
+    void mouseMoveEvent (QMouseEvent * event);
 
     string seconds2string (float seconds);
 

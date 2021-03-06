@@ -6,8 +6,9 @@
 int main(int argc, char *argv[])
 {
     if (!BASS_Init(-1, 44100, BASS_DEVICE_16BITS | BASS_DEVICE_STEREO, 0, NULL)) {
-
+        return 0;
     }
+
     BASS_SetConfig(BASS_CONFIG_SRC, 16);
 
     QApplication a(argc, argv);

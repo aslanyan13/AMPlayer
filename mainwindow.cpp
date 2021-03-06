@@ -10,16 +10,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         prerenderedFft[i] = 3;
     }
 
+
     channel = NULL;
     timer = new QTimer();
     timer->setInterval(6);
     connect(timer, SIGNAL(timeout()), this, SLOT(updateTime()));
     timer->start();
 
+    // Window transparency
+    // this->setWindowFlags(Qt::CustomizeWindowHint);
+    // this->setWindowFlags(Qt::FramelessWindowHint);
+
     ui->setupUi(this);
 
-    this->setStyleSheet("QMainWindow { background-color: #212121; }");
-    this->setWindowTitle("AMP v1.0a");
+    this->setStyleSheet("QMainWindow { background-color: #141414; }");
+    this->setWindowTitle("AMPlayer v1.0a");
 
     /*
     QPushButton * menuBtn = new QPushButton(this);
@@ -31,49 +36,49 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     pauseBtn = new QPushButton(this);
     pauseBtn->setGeometry(375, 285, 50, 50);
-    pauseBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 55px; background-color: #212121; color: silver;");
+    pauseBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 55px; background-color: #141414; color: silver;");
     pauseBtn->setText(QString::fromStdWString(L"▶️"));
     pauseBtn->show();
 
     QPushButton * forwardBtn = new QPushButton(this);
     forwardBtn->setGeometry(440, 290, 40, 40);
-    forwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #212121; color: silver;");
+    forwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #141414; color: silver;");
     forwardBtn->setText(QString::fromStdWString(L"⏭️"));
     forwardBtn->show();
 
     QPushButton * backwardBtn = new QPushButton(this);
     backwardBtn->setGeometry(320, 290, 40, 40);
-    backwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #212121; color: silver;");
+    backwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #141414; color: silver;");
     backwardBtn->setText(QString::fromStdWString(L"⏮️"));
     backwardBtn->show();
 
     repeatBtn = new QPushButton(this);
     repeatBtn->setGeometry(500, 295, 30, 30);
-    repeatBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
+    repeatBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     repeatBtn->setText("Rpt");
     repeatBtn->show();
 
     QPushButton * equoBtn = new QPushButton(this);
     equoBtn->setGeometry(230, 295, 30, 30);
-    equoBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
+    equoBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     equoBtn->setText("Equo");
     equoBtn->show();
 
     QPushButton * shuffleBtn = new QPushButton(this);
     shuffleBtn->setGeometry(270, 295, 30, 30);
-    shuffleBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
+    shuffleBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     shuffleBtn->setText("Sfl");
     shuffleBtn->show();
 
     QPushButton * audio3dBtn = new QPushButton(this);
     audio3dBtn->setGeometry(540, 295, 30, 30);
-    audio3dBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
+    audio3dBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     audio3dBtn->setText("3D");
     audio3dBtn->show();
 
     QPushButton * cover = new QPushButton (this);
     cover->setGeometry(325, 60, 150, 150);
-    cover->setStyleSheet("font-size: 18px; border: 2px solid silver; background-color: #212121; color: silver;");
+    cover->setStyleSheet("font-size: 18px; border: 2px solid silver; border-radius: 5px; background-color: #141414; color: silver;");
     cover->setText("Cover Image");
     cover->show();
 
@@ -81,14 +86,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songTitle->setText("");
     songTitle->setGeometry(200, 220, 400, 30);
     songTitle->setAlignment(Qt::AlignCenter);
-    songTitle->setStyleSheet("/* border: 1px solid silver; */ font-size: 20px; background-color: #212121; color: silver;");
+    songTitle->setStyleSheet("/* border: 1px solid silver; */ font-size: 20px; background-color: #141414; color: silver;");
     songTitle->show();
 
     QLabel * songInfo = new QLabel(this);
     songInfo->setText("");
     songInfo->setGeometry(200, 255, 400, 16);
     songInfo->setAlignment(Qt::AlignCenter);
-    songInfo->setStyleSheet("/* border: 1px solid silver; */ background-color: #212121; color: gray;");
+    songInfo->setStyleSheet("/* border: 1px solid silver; */ background-color: #141414; color: gray;");
     songInfo->show();
 
     /*
@@ -100,30 +105,39 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     spectrum->show();
     */
 
+    timecode = new QLabel (this);
+    timecode->setGeometry(0, 0, 0, 0);
+    timecode->setAlignment(Qt::AlignCenter);
+    timecode->setMouseTracking(true);
+    timecode->installEventFilter(this);
+    timecode->setStyleSheet("font-size: 10px; border: 1px solid silver; background-color: #141414; color: silver;");
+
     playlistWidget = new QListWidget (this);
 
+    this->playlistWidget->setMouseTracking(true);
     playlistWidget->setGeometry(15, 400, 770, 160);
-    playlistWidget->setStyleSheet("padding: 10px; font-size: 14px; border: 1px solid silver; background-color: #212121; color: silver;");
+    playlistWidget->setStyleSheet("padding: 10px; font-size: 14px; border: 1px solid silver; border-radius: 5px; background-color: #141414; color: silver;");
     playlistWidget->show();
 
     QPushButton * addSong = new QPushButton (this);
     addSong->setGeometry(15, 570, 100, 20);
-    addSong->setText("Add Song");
-    addSong->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
+    addSong->setText("➕ Add Song");
+    addSong->setStyleSheet("border: 1px solid silver; background-color: #141414; color: silver;");
+    // addSong->setStyleSheet("border-radius: 5px; background-color: #5AB75A; color: silver;");
     addSong->show();
 
     songPosition = new QLabel(this);
     songPosition->setText("00:00");
-    songPosition->setGeometry(23, 365, 200, 20);
+    songPosition->setGeometry(15, 363, 200, 20);
     songPosition->setAlignment(Qt::AlignLeft);
-    songPosition->setStyleSheet("/* border: 1px solid silver; background-color: #212121; */ color: gray;");
+    songPosition->setStyleSheet("/* border: 1px solid silver; background-color: #141414; */ color: gray;");
     songPosition->show();
 
     songDuration = new QLabel(this);
     songDuration->setText("00:00");
-    songDuration->setGeometry(600, 365, 180, 20);
+    songDuration->setGeometry(605, 363, 180, 20);
     songDuration->setAlignment(Qt::AlignRight);
-    songDuration->setStyleSheet("/* border: 1px solid silver; background-color: #212121; */ color: gray;");
+    songDuration->setStyleSheet("/* border: 1px solid silver; background-color: #141414; */ color: gray;");
     songDuration->show();
 
     volumeSlider = new QSlider (Qt::Horizontal, this);
@@ -157,6 +171,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (repeatBtn, SIGNAL(clicked()), this, SLOT(changeRepeat()));
 
     connect (volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(changeVolume(int)));
+
+    this->setMouseTracking(true);
+    this->centralWidget()->setMouseTracking(true);
 }
 
 MainWindow::~MainWindow()
@@ -372,45 +389,48 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Spectrum background
-    QColor color = QColor(40, 40, 40);
+    QColor color = QColor(20, 20, 20);
 
     painter.setBrush(QBrush(color, Qt::SolidPattern));
-    painter.setPen(QPen(QColor (192, 192, 192), 1, Qt::SolidLine, Qt::FlatCap));
+    painter.setPen(QPen(Qt::transparent, 1, Qt::SolidLine, Qt::FlatCap));
 
-    painter.drawRect (15, 350, 770, 40);
+    painter.drawRect (50, 350, 700, 40);
 
     if (liveSpec) {
         float fft[1024];
         BASS_ChannelGetData(channel, fft, BASS_DATA_FFT2048);
 
-        for (int i = 0; i < 128; i++) {
+        for (int i = 0; i < 140; i++) {
             int h = sqrt(fft[i + 1]) * 3 * 40 - 4;
-            if (h < 5) h = 5;
+            if (h < 3) h = 3;
             if (h > 40) h = 40;
 
-            color = QColor(201, 59, 49);
+            color = QColor(255, 0, 0);
 
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
-            path.addRoundedRect(QRectF(15 + 6 * i, 350 + 10 + (20 - h) / 2, 3, h), 2, 2);
+            path.addRoundedRect(QRectF(50 + 5 * i, 350 + 10 + (20 - h) / 2, 3, h), 2, 2);
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
-            p.fillPath(path, color);
+            if (i * (getDuration() / 140) <= getPosition())
+                p.fillPath(path, color);
+            else
+                p.fillPath(path, QColor (192, 192, 192));
             p.drawPath(path);
         }
     } else {
-        for (int i = 0; i < 128; i++) {
-            color = QColor(201, 59, 49);
+        for (int i = 0; i < 140; i++) {
+            color = QColor(255, 0, 0);
 
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
-            path.addRoundedRect(QRectF(15 + 6 * i, 350 + 10 + (20 - prerenderedFft[i]) / 2, 3, prerenderedFft[i]), 2, 2);
+            path.addRoundedRect(QRectF(50 + 5 * i, 350 + 10 + (20 - prerenderedFft[i]) / 2, 3, prerenderedFft[i]), 2, 2);
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
 
-            if (i * (getDuration() / 128) <= getPosition())
+            if (i * (getDuration() / 140) <= getPosition())
                 p.fillPath(path, color);
             else
                 p.fillPath(path, QColor (192, 192, 192));
@@ -431,7 +451,7 @@ void MainWindow::prerenderFft ()
 
     BASS_ChannelPlay(channel, FALSE);
     float fft[1024];
-    for (float i = 0; i < time; i+= time / 128, k++)
+    for (float i = 0; i < time; i+= time / 140, k++)
     {
         BASS_ChannelGetData(channel, fft, BASS_DATA_FFT2048);
 
@@ -452,4 +472,37 @@ void MainWindow::prerenderFft ()
     }
 
     BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, 0), BASS_POS_BYTE);
+}
+// Need to fix child widget tracking issue
+void MainWindow::mouseMoveEvent (QMouseEvent * event) {
+    float mouseX = event->pos().x();
+    float mouseY = event->pos().y();
+
+    cout << mouseX << " " << mouseY << endl;
+
+    if (mouseX > 50 && mouseX < 750 && mouseY > 350 && mouseY < 390) {
+        this->setCursor(Qt::PointingHandCursor);
+
+        timecode->repaint();
+        timecode->clear();
+        timecode->setGeometry (mouseX + 10, mouseY + 10, 50, 20);
+        timecode->setText(QString::fromStdString(seconds2string(((mouseX - 50) / (700.0f)) * getDuration())));
+        timecode->show();
+    }
+    else {
+        this->setCursor(Qt::ArrowCursor);
+        timecode->hide();
+    }
+}
+void MainWindow::mousePressEvent (QMouseEvent * event) {
+    float mouseX = event->pos().x();
+    float mouseY = event->pos().y();
+
+    if (mouseX > 50 && mouseX < 750 && mouseY > 350 && mouseY < 390) {
+        if (event->button() == Qt::LeftButton)
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, ((mouseX - 50) / (700.0f)) * getDuration()), BASS_POS_BYTE);
+        else if (event->button() == Qt::RightButton) {
+            liveSpec = !liveSpec;
+        }
+    }
 }
