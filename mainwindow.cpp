@@ -5,9 +5,14 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    for (int i = 0; i < 1024; i++)
+    {
+        prerenderedFft[i] = 3;
+    }
+
     channel = NULL;
     timer = new QTimer();
-    timer->setInterval(100);
+    timer->setInterval(6);
     connect(timer, SIGNAL(timeout()), this, SLOT(updateTime()));
     timer->start();
 
@@ -16,80 +21,84 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->setStyleSheet("QMainWindow { background-color: #212121; }");
     this->setWindowTitle("AMP v1.0a");
 
+    /*
     QPushButton * menuBtn = new QPushButton(this);
     menuBtn->setGeometry(15, 20, 30, 30);
     menuBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
     menuBtn->setText("Menu");
     menuBtn->show();
+    */
 
     pauseBtn = new QPushButton(this);
     pauseBtn->setGeometry(375, 285, 50, 50);
-    pauseBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
-    pauseBtn->setText("Pause");
+    pauseBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 55px; background-color: #212121; color: silver;");
+    pauseBtn->setText(QString::fromStdWString(L"▶️"));
     pauseBtn->show();
 
     QPushButton * forwardBtn = new QPushButton(this);
     forwardBtn->setGeometry(440, 290, 40, 40);
-    forwardBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
-    forwardBtn->setText("Fwd");
+    forwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #212121; color: silver;");
+    forwardBtn->setText(QString::fromStdWString(L"⏭️"));
     forwardBtn->show();
 
     QPushButton * backwardBtn = new QPushButton(this);
     backwardBtn->setGeometry(320, 290, 40, 40);
-    backwardBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
-    backwardBtn->setText("Bwd");
+    backwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #212121; color: silver;");
+    backwardBtn->setText(QString::fromStdWString(L"⏮️"));
     backwardBtn->show();
 
     repeatBtn = new QPushButton(this);
     repeatBtn->setGeometry(500, 295, 30, 30);
-    repeatBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
+    repeatBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
     repeatBtn->setText("Rpt");
     repeatBtn->show();
 
     QPushButton * equoBtn = new QPushButton(this);
     equoBtn->setGeometry(230, 295, 30, 30);
-    equoBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
+    equoBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
     equoBtn->setText("Equo");
     equoBtn->show();
 
     QPushButton * shuffleBtn = new QPushButton(this);
     shuffleBtn->setGeometry(270, 295, 30, 30);
-    shuffleBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
+    shuffleBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
     shuffleBtn->setText("Sfl");
     shuffleBtn->show();
 
     QPushButton * audio3dBtn = new QPushButton(this);
     audio3dBtn->setGeometry(540, 295, 30, 30);
-    audio3dBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
+    audio3dBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #212121; color: silver;");
     audio3dBtn->setText("3D");
     audio3dBtn->show();
 
     QPushButton * cover = new QPushButton (this);
     cover->setGeometry(325, 60, 150, 150);
-    cover->setStyleSheet("font-size: 18px; border: 1px solid silver; background-color: #212121; color: silver;");
+    cover->setStyleSheet("font-size: 18px; border: 2px solid silver; background-color: #212121; color: silver;");
     cover->setText("Cover Image");
     cover->show();
 
     songTitle = new QLabel(this);
-    songTitle->setText("Artist - Song Name");
+    songTitle->setText("");
     songTitle->setGeometry(200, 220, 400, 30);
     songTitle->setAlignment(Qt::AlignCenter);
     songTitle->setStyleSheet("/* border: 1px solid silver; */ font-size: 20px; background-color: #212121; color: silver;");
     songTitle->show();
 
     QLabel * songInfo = new QLabel(this);
-    songInfo->setText("Genre, 44.1k MP3");
+    songInfo->setText("");
     songInfo->setGeometry(200, 255, 400, 16);
     songInfo->setAlignment(Qt::AlignCenter);
     songInfo->setStyleSheet("/* border: 1px solid silver; */ background-color: #212121; color: gray;");
     songInfo->show();
 
+    /*
     QLabel * spectrum = new QLabel (this);
     spectrum->setText("Pre-rendered/Live Spectrum");
     spectrum->setGeometry(15, 350, 770, 40);
     spectrum->setAlignment(Qt::AlignCenter);
     spectrum->setStyleSheet("font-size: 20px; border: 1px solid silver; background-color: #212121; color: silver;");
     spectrum->show();
+    */
 
     playlistWidget = new QListWidget (this);
 
@@ -139,7 +148,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
 
-    connect (menuBtn, SIGNAL(clicked()), this, SLOT(test()));
+    // connect (menuBtn, SIGNAL(clicked()), this, SLOT(test()));
     connect (addSong, SIGNAL(clicked()), this, SLOT(openFile()));
 
     connect (forwardBtn, SIGNAL(clicked()), this, SLOT(forward()));
@@ -180,10 +189,16 @@ bool MainWindow::openFile ()
         temp.setNameFromPath();
         wcout << temp.path << endl;
 
+        int iterIndex = current - playlist.begin();
+
         playlist.push_back(temp);
         cout << playlist.size() << endl;
 
+        current = playlist.begin() + iterIndex;
+
         drawPlaylist();
+        if (playlist.size() == 1)
+            setActive (0);
     }
 
     return true;
@@ -215,13 +230,18 @@ void MainWindow::setTitle () {
     songTitle->setText(QString::fromStdWString(name));
 }
 void MainWindow::setActive(QListWidgetItem * item) {
-    current = playlist.begin() + item->data(Qt::UserRole).toInt();
+    setActive (item->data(Qt::UserRole).toInt());
+}
+void MainWindow::setActive (int index) {
+    current = playlist.begin() + index;
 
     if (channel != NULL)
         BASS_ChannelStop(channel);
 
     channel = BASS_StreamCreateFile(FALSE, current->path, 0, 0, 0);
-    BASS_ChannelPlay(channel, true);
+    prerenderFft();
+
+    BASS_ChannelPlay(channel, false);
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 
     QString pos = QString::fromStdString(seconds2string(getPosition()));
@@ -235,12 +255,16 @@ void MainWindow::forward () {
     if (channel == NULL || playlist.size() == 1)
         return;
 
+    cout << "Distance - " << distance (playlist.end(), current) << endl;
     current++;
     cout << "Distance - " << distance (playlist.end(), current) << endl;
     if (distance (playlist.end(), current) >= 0) current = playlist.begin();
 
     BASS_ChannelStop(channel);
     channel = BASS_StreamCreateFile(FALSE, current->path, 0, 0, 0);
+
+    prerenderFft();
+
     BASS_ChannelPlay(channel, true);
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 
@@ -261,6 +285,9 @@ void MainWindow::backward () {
 
     BASS_ChannelStop(channel);
     channel = BASS_StreamCreateFile(FALSE, current->path, 0, 0, 0);
+
+    prerenderFft();
+
     BASS_ChannelPlay(channel, true);
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 
@@ -278,11 +305,9 @@ void MainWindow::pause ()
     paused = !paused;
 
     if (paused) {
-        pauseBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
         BASS_ChannelPlay(channel, false);
     }
     else {
-        pauseBtn->setStyleSheet("border: 1px solid #26A0DA; background-color: #212121; color: silver;");
         BASS_ChannelPause(channel);
     }
 }
@@ -336,4 +361,95 @@ void MainWindow::updateTime() {
             }
         }
     }
+
+    repaint();
+}
+
+void MainWindow::paintEvent(QPaintEvent * event) {
+    Q_UNUSED(event);
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Spectrum background
+    QColor color = QColor(40, 40, 40);
+
+    painter.setBrush(QBrush(color, Qt::SolidPattern));
+    painter.setPen(QPen(QColor (192, 192, 192), 1, Qt::SolidLine, Qt::FlatCap));
+
+    painter.drawRect (15, 350, 770, 40);
+
+    if (liveSpec) {
+        float fft[1024];
+        BASS_ChannelGetData(channel, fft, BASS_DATA_FFT2048);
+
+        for (int i = 0; i < 128; i++) {
+            int h = sqrt(fft[i + 1]) * 3 * 40 - 4;
+            if (h < 5) h = 5;
+            if (h > 40) h = 40;
+
+            color = QColor(201, 59, 49);
+
+            QPainter p(this);
+            p.setRenderHint(QPainter::Antialiasing);
+            QPainterPath path;
+            path.addRoundedRect(QRectF(15 + 6 * i, 350 + 10 + (20 - h) / 2, 3, h), 2, 2);
+            QPen pen(Qt::transparent, 0);
+            p.setPen(pen);
+            p.fillPath(path, color);
+            p.drawPath(path);
+        }
+    } else {
+        for (int i = 0; i < 128; i++) {
+            color = QColor(201, 59, 49);
+
+            QPainter p(this);
+            p.setRenderHint(QPainter::Antialiasing);
+            QPainterPath path;
+            path.addRoundedRect(QRectF(15 + 6 * i, 350 + 10 + (20 - prerenderedFft[i]) / 2, 3, prerenderedFft[i]), 2, 2);
+            QPen pen(Qt::transparent, 0);
+            p.setPen(pen);
+
+            if (i * (getDuration() / 128) <= getPosition())
+                p.fillPath(path, color);
+            else
+                p.fillPath(path, QColor (192, 192, 192));
+
+            p.drawPath(path);
+        }
+    }
+}
+
+void MainWindow::prerenderFft ()
+{
+    if (channel == NULL) return;
+
+    int k = 0;
+    float time = getDuration();
+
+    int avgLen = 16;
+
+    BASS_ChannelPlay(channel, FALSE);
+    float fft[1024];
+    for (float i = 0; i < time; i+= time / 128, k++)
+    {
+        BASS_ChannelGetData(channel, fft, BASS_DATA_FFT2048);
+
+        float max = 0;
+        for (int j = 1; j <= avgLen; j++)
+            max += sqrt(fft[j]) * 3 * 40 - 4;
+
+        max /= avgLen;
+        max *= 2;
+
+        if (max <= 3) max = 3;
+        else if (max > 40) max = 40;
+
+        prerenderedFft[(int)k] = max;
+        cout << max << " ";
+
+        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, i), BASS_POS_BYTE);
+    }
+
+    BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, 0), BASS_POS_BYTE);
 }

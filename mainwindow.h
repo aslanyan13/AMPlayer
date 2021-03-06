@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QPushButton>
+#include <QPaintEvent>
+#include <QPainterPath>
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMenu>
@@ -14,6 +16,7 @@
 
 #include <iostream>
 #include <vector>
+#include <math.h>
 
 #include "bass.h"
 #include "song.h"
@@ -37,6 +40,7 @@ private slots:
 
     bool openFile ();
     void setActive(QListWidgetItem *);
+    void setActive(int index);
 
     void backward();
     void forward();
@@ -47,8 +51,6 @@ private slots:
     void changeRepeat () {
         repeat = !repeat;
         cout << "Repeat - " << repeat << endl;
-        if (repeat) repeatBtn->setStyleSheet("border: 1px solid #26A0DA; background-color: #212121; color: silver;");
-        else        repeatBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
     }
 
 private:
@@ -57,7 +59,10 @@ private:
     bool paused = true;
     bool repeat = false;
     bool shuffle = false;
+    bool liveSpec = false;
+
     float volume = 1;
+    float prerenderedFft[1024];
 
     vector <Song> playlist;
     vector <Song>::iterator current;
@@ -77,7 +82,9 @@ private:
 
     void drawPlaylist();
     void setTitle();
+    void prerenderFft ();
 
+    void paintEvent(QPaintEvent * event);
     void keyPressEvent(QKeyEvent *ev)
     {
         QWORD pos = BASS_ChannelGetPosition(channel, BASS_POS_BYTE);
