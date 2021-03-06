@@ -1,2 +1,2 @@
 # Project AMP
-Aslanyan Music Player
+Aslanyan Music Player (Graduation work)
