@@ -11,6 +11,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
 
 
+    int id = QFontDatabase::addApplicationFont("C:\\Users\\Hrach\\Documents\\Thesis\\ProjectAMP\\Font Awesome 5 Pro Solid.ttf");
+    cout << id << endl;
+    QString family = QFontDatabase::applicationFontFamilies(id).at(0);
+    QFont fontAwesome(family);
+
     channel = NULL;
     timer = new QTimer();
     timer->setInterval(6);
@@ -35,52 +40,53 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     */
 
     pauseBtn = new QPushButton(this);
-    pauseBtn->setGeometry(375, 285, 50, 50);
-    pauseBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 55px; background-color: #141414; color: silver;");
-    pauseBtn->setText(QString::fromStdWString(L"▶️"));
+    pauseBtn->setFont(fontAwesome);
+    pauseBtn->setGeometry(380, 285, 50, 50);
+    pauseBtn->setStyleSheet("font-size: 36px; border: 0px solid silver; background-color: #141414; color: silver;");
+    pauseBtn->setText("\uf04b");
     pauseBtn->show();
 
     QPushButton * forwardBtn = new QPushButton(this);
-    forwardBtn->setGeometry(440, 290, 40, 40);
+    forwardBtn->setFont(fontAwesome);
+    forwardBtn->setGeometry(445, 290, 40, 40);
     forwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #141414; color: silver;");
-    forwardBtn->setText(QString::fromStdWString(L"⏭️"));
+    forwardBtn->setText("\uf04e");
     forwardBtn->show();
 
     QPushButton * backwardBtn = new QPushButton(this);
-    backwardBtn->setGeometry(320, 290, 40, 40);
+    backwardBtn->setFont(fontAwesome);
+    backwardBtn->setGeometry(325, 290, 40, 40);
     backwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #141414; color: silver;");
-    backwardBtn->setText(QString::fromStdWString(L"⏮️"));
+    backwardBtn->setText("\uf04a");
     backwardBtn->show();
 
     repeatBtn = new QPushButton(this);
-    repeatBtn->setGeometry(500, 295, 30, 30);
-    repeatBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
-    repeatBtn->setText("Rpt");
+    repeatBtn->setFont(fontAwesome);
+    repeatBtn->setGeometry(500, 291, 30, 30);
+    repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    repeatBtn->setText("\uf363");
     repeatBtn->show();
 
     QPushButton * equoBtn = new QPushButton(this);
-    equoBtn->setGeometry(230, 295, 30, 30);
-    equoBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
-    equoBtn->setText("Equo");
+    equoBtn->setFont(fontAwesome);
+    equoBtn->setGeometry(235, 291, 30, 30);
+    equoBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    equoBtn->setText("\uf3f1");
     equoBtn->show();
 
     QPushButton * shuffleBtn = new QPushButton(this);
-    shuffleBtn->setGeometry(270, 295, 30, 30);
-    shuffleBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
-    shuffleBtn->setText("Sfl");
+    shuffleBtn->setFont(fontAwesome);
+    shuffleBtn->setGeometry(275, 291, 30, 30);
+    shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    shuffleBtn->setText("\uf074");
     shuffleBtn->show();
 
     QPushButton * audio3dBtn = new QPushButton(this);
-    audio3dBtn->setGeometry(540, 295, 30, 30);
-    audio3dBtn->setStyleSheet("margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
-    audio3dBtn->setText("3D");
+    audio3dBtn->setFont(fontAwesome);
+    audio3dBtn->setGeometry(540, 291, 30, 30);
+    audio3dBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    audio3dBtn->setText("\uf1b2");
     audio3dBtn->show();
-
-    QPushButton * cover = new QPushButton (this);
-    cover->setGeometry(325, 60, 150, 150);
-    cover->setStyleSheet("font-size: 18px; border: 2px solid silver; border-radius: 5px; background-color: #141414; color: silver;");
-    cover->setText("Cover Image");
-    cover->show();
 
     songTitle = new QLabel(this);
     songTitle->setText("");
@@ -90,22 +96,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songTitle->show();
 
     QLabel * songInfo = new QLabel(this);
-    songInfo->setText("");
+    songInfo->setText("Genre, 44.1k MP3");
     songInfo->setGeometry(200, 255, 400, 16);
     songInfo->setAlignment(Qt::AlignCenter);
     songInfo->setStyleSheet("/* border: 1px solid silver; */ background-color: #141414; color: gray;");
     songInfo->show();
 
-    /*
-    QLabel * spectrum = new QLabel (this);
-    spectrum->setText("Pre-rendered/Live Spectrum");
-    spectrum->setGeometry(15, 350, 770, 40);
-    spectrum->setAlignment(Qt::AlignCenter);
-    spectrum->setStyleSheet("font-size: 20px; border: 1px solid silver; background-color: #212121; color: silver;");
-    spectrum->show();
-    */
-
     timecode = new QLabel (this);
+    timecode->raise();
     timecode->setGeometry(0, 0, 0, 0);
     timecode->setAlignment(Qt::AlignCenter);
     timecode->setMouseTracking(true);
@@ -116,17 +114,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     this->playlistWidget->setMouseTracking(true);
     playlistWidget->setGeometry(15, 400, 770, 160);
-    playlistWidget->setStyleSheet("padding: 10px; font-size: 14px; border: 1px solid silver; border-radius: 5px; background-color: #141414; color: silver;");
+    playlistWidget->lower();
+    playlistWidget->setStyleSheet("padding: 10px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver;");
     playlistWidget->show();
 
     QPushButton * addSong = new QPushButton (this);
+    addSong->setFont(fontAwesome);
     addSong->setGeometry(15, 570, 100, 20);
-    addSong->setText("➕ Add Song");
-    addSong->setStyleSheet("border: 1px solid silver; background-color: #141414; color: silver;");
+    addSong->setText("\uf067 Add Song");
+    addSong->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
     // addSong->setStyleSheet("border-radius: 5px; background-color: #5AB75A; color: silver;");
     addSong->show();
 
     songPosition = new QLabel(this);
+    songPosition->setMouseTracking(true);
     songPosition->setText("00:00");
     songPosition->setGeometry(15, 363, 200, 20);
     songPosition->setAlignment(Qt::AlignLeft);
@@ -134,6 +135,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songPosition->show();
 
     songDuration = new QLabel(this);
+    songDuration->setMouseTracking(true);
     songDuration->setText("00:00");
     songDuration->setGeometry(605, 363, 180, 20);
     songDuration->setAlignment(Qt::AlignRight);
@@ -144,9 +146,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     volumeSlider->setMaximum(100);
     volumeSlider->setMinimum(0);
     volumeSlider->setValue(100);
-    volumeSlider->setGeometry(633, 300, 150, 20);
+    volumeSlider->setGeometry(633, 301, 150, 20);
     volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
                                     "border: 1px solid #999999; " \
+                                    "border-radius: 15px;" \
                                     "height: 7px; /* the groove expands to the size of the slider by default. by giving it a height, it has a fixed size */" \
                                     "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);"\
                                     "margin: 2px 0;"\
@@ -154,9 +157,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                "QSlider::handle:horizontal {" \
                                     "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); "\
                                     "border: 1px solid #5c5c5c; "\
-                                    "width: 18px; " \
+                                    "width: 10px; " \
+                                    "width: 10px; " \
                                     "margin: -2px 0;  handle is placed by default on the contents rect of the groove. Expand outside the groove */ " \
-                                    "border-radius: 2px; "\
+                                    "border-radius: 100%; "\
+                                "}"
+                                "QSlider::handle:horizontal:hover {" \
+                                    "border-radius: 10px;" \
                                 "}");
     volumeSlider->show();
 
@@ -386,7 +393,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     Q_UNUSED(event);
 
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::Antialiasing, true);
 
     // Spectrum background
     QColor color = QColor(20, 20, 20);
@@ -396,6 +403,24 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 
     painter.drawRect (50, 350, 700, 40);
 
+    QImage cover;
+
+    if (!cover.load("C:\\Users\\Hrach\\Documents\\Thesis\\build-ProjectAMP-Desktop_x86_windows_msys_pe_32bit-Release\\release\\resources\\cover-placeholder.jpg")) {
+        cout << "File load Error!" << endl;
+    }
+    else {
+        QBrush brush(cover);
+        QTransform transform;
+        transform.scale(0.3, 0.3);
+        transform.translate(80, 200);
+        brush.setTransform(transform);
+        painter.setBrush(brush);
+        painter.drawRoundedRect(325, 60, 150, 150, 5, 5);
+    }
+    //cover->setStyleSheet("font-size: 18px; border: 2px solid silver; border-radius: 5px; background-color: #141414; color: silver;");
+
+    color = QColor(255, 37, 79);
+
     if (liveSpec) {
         float fft[1024];
         BASS_ChannelGetData(channel, fft, BASS_DATA_FFT2048);
@@ -404,8 +429,6 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             int h = sqrt(fft[i + 1]) * 3 * 40 - 4;
             if (h < 3) h = 3;
             if (h > 40) h = 40;
-
-            color = QColor(255, 0, 0);
 
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing);
@@ -421,7 +444,6 @@ void MainWindow::paintEvent(QPaintEvent * event) {
         }
     } else {
         for (int i = 0; i < 140; i++) {
-            color = QColor(255, 0, 0);
 
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing);
@@ -492,6 +514,13 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
     else {
         this->setCursor(Qt::ArrowCursor);
         timecode->hide();
+    }
+
+    if (mouseX > 15 && mouseX < 785 && mouseY > 400 && mouseY < 570)
+    {
+        playlistWidget->raise();
+    } else {
+        playlistWidget->lower();
     }
 }
 void MainWindow::mousePressEvent (QMouseEvent * event) {

@@ -15,6 +15,10 @@
 #include <QSlider>
 #include <QKeyEvent>
 #include <QTimer>
+#include <QImage>
+#include <QPixmap>
+#include <QFontDatabase>
+#include <QFont>
 
 #include <iostream>
 #include <vector>
