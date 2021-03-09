@@ -1,11 +1,13 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-QColor mainColor(57, 255, 20);
-string mainColorStr = "rgb(37, 255, 20)";
+QColor mainColor(255, 37, 79);
+string mainColorStr = "rgb(255, 37, 79)";
 
-// rgb(255, 37, 79) - Raspberry color
-// rgb(37, 255, 20) - Neon green color
+// rgb(255, 37, 79)  - Raspberry color
+// rgb(37, 255, 20)  - Neon green color
+// rgb(255, 0, 0)    - Red
+// rgb(91, 192, 222) - Blue
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -158,10 +160,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QPushButton * addSong = new QPushButton (this);
     addSong->setFont(fontAwesome);
     addSong->setGeometry(15, 570, 100, 20);
-    addSong->setText("\uf067 Add Song");
+    addSong->setText("\uf319 Add Song");
     addSong->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
-    // addSong->setStyleSheet("border-radius: 5px; background-color: #5AB75A; color: silver;");
     addSong->show();
+
+    QPushButton * addFolder = new QPushButton (this);
+    addFolder->setFont(fontAwesome);
+    addFolder->setGeometry(125, 570, 100, 20);
+    addFolder->setText("\uf07c Add Folder");
+    addFolder->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
+    addFolder->show();
 
     songPosition = new QLabel(this);
     songPosition->setMouseTracking(true);
@@ -186,31 +194,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     volumeSlider->setGeometry(633, 301, 150, 20);
     volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
                                     "border: 1px solid #999999; " \
-                                    "border-radius: 15px;" \
-                                    "height: 7px; /* the groove expands to the size of the slider by default. by giving it a height, it has a fixed size */" \
-                                    "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);"\
-                                    "margin: 2px 0;"\
+                                    "border-radius: 20px;" \
+                                    "background: #181818;"\
+                                    "margin: 7px 0;"\
                                 "}" \
                                "QSlider::handle:horizontal {" \
                                     "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); "\
                                     "border: 1px solid #5c5c5c; "\
-                                    "width: 10px; " \
-                                    "width: 10px; " \
-                                    "margin: -2px 0;  handle is placed by default on the contents rect of the groove. Expand outside the groove */ " \
-                                    "border-radius: 100%; "\
+                                    "width: 5px; " \
+                                    "margin: -5px -2px; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */ " \
+                                    "border-radius: 20px; "\
                                 "}"
-                                "QSlider::handle:horizontal:hover {" \
-                                    "border-radius: 10px;" \
+                                "QSlider::sub-page:horizontal {" \
+                                    "border-radius: 20px;" \
+                                    "margin: 7px 0;" \
+                                    "background: " + tr(mainColorStr.c_str()) + "; " \
                                 "}");
-
-    /*
-    QString fileName = QFileDialog::getOpenFileName();
-
-    QImage temp;
-    if (!temp.load(fileName)) {
-        cout << "Cant load" << endl;
-    }
-    */
 
     volumeSlider->show();
 
@@ -218,6 +217,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // connect (menuBtn, SIGNAL(clicked()), this, SLOT(test()));
     connect (addSong, SIGNAL(clicked()), this, SLOT(openFile()));
+    connect (addFolder, SIGNAL(clicked()), this, SLOT(openFolder()));
 
     connect (forwardBtn, SIGNAL(clicked()), this, SLOT(forward()));
     connect (backwardBtn, SIGNAL(clicked()), this, SLOT(backward()));
@@ -226,6 +226,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (shuffleBtn, SIGNAL(clicked()), this, SLOT(changeShuffle()));
     connect (audio3dBtn, SIGNAL(clicked()), this, SLOT(audio3D()));
     connect (equoBtn, SIGNAL(clicked()), this, SLOT(equalizer()));
+    connect (visualBtn, SIGNAL(clicked()), this, SLOT(visualizations()));
+    connect (metronomeBtn, SIGNAL(clicked()), this, SLOT(metronome()));
 
     connect (volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(changeVolume(int)));
 
@@ -277,6 +279,47 @@ bool MainWindow::openFile ()
 
     return true;
 }
+bool MainWindow::openFolder () {
+    QString folder = QFileDialog::getExistingDirectory(0, ("Select Folder with Songs"), QDir::homePath());
+    cout << folder.toStdString() << endl;
+
+    if (folder.toStdString() == "")
+        return false;
+
+    QDir directory(folder);
+    QStringList musicFiles = directory.entryList(QStringList() << "*.mp3" << "*.MP3",QDir::Files|QDir::Readable);
+
+    for (int i = 0; i < musicFiles.length(); i++)
+    {
+        wchar_t tmp[MAX_PATH];
+        QString fullpath = folder + "/" + musicFiles[i];
+        wcscpy(tmp, fullpath.toStdWString().c_str());
+
+        Song temp(tmp);
+        temp.setName(musicFiles[i].toStdWString());
+        temp.setNameFromPath();
+        playlist.push_back(temp);
+
+        // cout << musicFiles[i].toStdString() << endl;
+    }
+
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("Files adding");
+
+    if (musicFiles.length() > 0) {
+        msgBox.setText(tr(to_string(musicFiles.length()).c_str()) + " files added to playlist successfully!");
+    } else {
+        msgBox.setText("There are no audio files in this folder!");
+    }
+
+    msgBox.setStyleSheet("background-color: #141414; color: silver;");
+    msgBox.exec();
+
+    drawPlaylist();
+
+    return true;
+}
+
 void MainWindow::drawPlaylist() {
     playlistWidget->clear();
 

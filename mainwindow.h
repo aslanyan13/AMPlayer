@@ -24,8 +24,10 @@
 #include <QFont>
 #include <QScrollBar>
 #include <QCommonStyle>
+#include <QDirIterator>
 
 #include <iostream>
+#include <string>
 #include <vector>
 #include <math.h>
 
@@ -50,6 +52,8 @@ private slots:
     void test();
 
     bool openFile ();
+    bool openFolder ();
+
     void setActive(QListWidgetItem *);
     void setActive(int index);
 
@@ -73,6 +77,20 @@ private slots:
         QMessageBox msgBox;
         msgBox.setWindowTitle("Equalizer");
         msgBox.setText("Equalizer will be added soon!");
+        msgBox.setStyleSheet("background-color: #141414; color: silver;");
+        msgBox.exec();
+    }
+    void visualizations () {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Visualizations");
+        msgBox.setText("Visualizations will be added soon!");
+        msgBox.setStyleSheet("background-color: #141414; color: silver;");
+        msgBox.exec();
+    }
+    void metronome () {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Metronome");
+        msgBox.setText("Metronome will be added soon!");
         msgBox.setStyleSheet("background-color: #141414; color: silver;");
         msgBox.exec();
     }

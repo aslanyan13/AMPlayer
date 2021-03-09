@@ -28,6 +28,8 @@ public:
     void setNameFromPath () {
         wstring temp (path);
         int left = temp.find_last_of(L'\\');
+        if (left == string::npos)
+            left = temp.find_last_of(L'/');
 
         name = temp.substr (left + 1);
 
