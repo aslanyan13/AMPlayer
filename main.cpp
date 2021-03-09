@@ -2,6 +2,8 @@
 #include "bass.h"
 
 #include <QApplication>
+#include <QFileDialog>
+#include <iostream>
 
 int main(int argc, char *argv[])
 {

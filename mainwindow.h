@@ -10,12 +10,14 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QMouseEventTransition>
+#include <QFileDialog>
 #include <QPainter>
 #include <QLabel>
 #include <QSlider>
 #include <QKeyEvent>
 #include <QTimer>
 #include <QImage>
+#include <QImageReader>
 #include <QPixmap>
 #include <QFontDatabase>
 #include <QFont>

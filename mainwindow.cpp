@@ -10,7 +10,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         prerenderedFft[i] = 3;
     }
 
-
     int id = QFontDatabase::addApplicationFont("C:\\Users\\Hrach\\Documents\\Thesis\\ProjectAMP\\Font Awesome 5 Pro Solid.ttf");
     cout << id << endl;
     QString family = QFontDatabase::applicationFontFamilies(id).at(0);
@@ -165,6 +164,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                 "QSlider::handle:horizontal:hover {" \
                                     "border-radius: 10px;" \
                                 "}");
+
+    /*
+    QString fileName = QFileDialog::getOpenFileName();
+
+    QImage temp;
+    if (!temp.load(fileName)) {
+        cout << "Cant load" << endl;
+    }
+    */
+
     volumeSlider->show();
 
     connect(playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
@@ -403,9 +412,16 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 
     painter.drawRect (50, 350, 700, 40);
 
-    QImage cover;
+    //QImage cover("C:\\Users\\Hrach\\Documents\\Thesis\\build-ProjectAMP-Desktop_x86_windows_msys_pe_32bit-Release\\release\\Images\\cover-placeholder.jpg");
 
-    if (!cover.load("C:\\Users\\Hrach\\Documents\\Thesis\\build-ProjectAMP-Desktop_x86_windows_msys_pe_32bit-Release\\release\\resources\\cover-placeholder.jpg")) {
+    QImageReader reader(":/Images/cover-placeholder.png");
+    QImage cover = reader.read();
+
+    if(cover.isNull()) {
+        cout << reader.errorString().toStdString() << endl;
+    }
+
+    if (cover.isNull()) {
         cout << "File load Error!" << endl;
     }
     else {
