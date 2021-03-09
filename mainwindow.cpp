@@ -1,7 +1,11 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-// #26A0DA
+QColor mainColor(57, 255, 20);
+string mainColorStr = "rgb(37, 255, 20)";
+
+// rgb(255, 37, 79) - Raspberry color
+// rgb(37, 255, 20) - Neon green color
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -10,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         prerenderedFft[i] = 3;
     }
 
-    int id = QFontDatabase::addApplicationFont("C:\\Users\\Hrach\\Documents\\Thesis\\ProjectAMP\\Font Awesome 5 Pro Solid.ttf");
+    int id = QFontDatabase::addApplicationFont(":/Font Awesome 5 Pro Solid.ttf");
     cout << id << endl;
     QString family = QFontDatabase::applicationFontFamilies(id).at(0);
     QFont fontAwesome(family);
@@ -42,7 +46,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     pauseBtn->setFont(fontAwesome);
     pauseBtn->setGeometry(380, 285, 50, 50);
     pauseBtn->setStyleSheet("font-size: 36px; border: 0px solid silver; background-color: #141414; color: silver;");
-    pauseBtn->setText("\uf04b");
+    pauseBtn->setText("\uf04c"); // f04b - play
+    pauseBtn->setCursor(Qt::PointingHandCursor);
     pauseBtn->show();
 
     QPushButton * forwardBtn = new QPushButton(this);
@@ -50,6 +55,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     forwardBtn->setGeometry(445, 290, 40, 40);
     forwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #141414; color: silver;");
     forwardBtn->setText("\uf04e");
+    forwardBtn->setCursor(Qt::PointingHandCursor);
     forwardBtn->show();
 
     QPushButton * backwardBtn = new QPushButton(this);
@@ -57,6 +63,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     backwardBtn->setGeometry(325, 290, 40, 40);
     backwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #141414; color: silver;");
     backwardBtn->setText("\uf04a");
+    backwardBtn->setCursor(Qt::PointingHandCursor);
     backwardBtn->show();
 
     repeatBtn = new QPushButton(this);
@@ -64,28 +71,48 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     repeatBtn->setGeometry(500, 291, 30, 30);
     repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     repeatBtn->setText("\uf363");
+    repeatBtn->setCursor(Qt::PointingHandCursor);
     repeatBtn->show();
 
-    QPushButton * equoBtn = new QPushButton(this);
+    equoBtn = new QPushButton(this);
     equoBtn->setFont(fontAwesome);
     equoBtn->setGeometry(235, 291, 30, 30);
     equoBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     equoBtn->setText("\uf3f1");
+    equoBtn->setCursor(Qt::PointingHandCursor);
     equoBtn->show();
 
-    QPushButton * shuffleBtn = new QPushButton(this);
+    shuffleBtn = new QPushButton(this);
     shuffleBtn->setFont(fontAwesome);
     shuffleBtn->setGeometry(275, 291, 30, 30);
     shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     shuffleBtn->setText("\uf074");
+    shuffleBtn->setCursor(Qt::PointingHandCursor);
     shuffleBtn->show();
 
-    QPushButton * audio3dBtn = new QPushButton(this);
+    metronomeBtn = new QPushButton(this);
+    metronomeBtn->setFont(fontAwesome);
+    metronomeBtn->setGeometry(195, 291, 30, 30);
+    metronomeBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    metronomeBtn->setText("\uf001");
+    metronomeBtn->setCursor(Qt::PointingHandCursor);
+    metronomeBtn->show();
+
+    audio3dBtn = new QPushButton(this);
     audio3dBtn->setFont(fontAwesome);
     audio3dBtn->setGeometry(540, 291, 30, 30);
     audio3dBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
     audio3dBtn->setText("\uf1b2");
+    audio3dBtn->setCursor(Qt::PointingHandCursor);
     audio3dBtn->show();
+
+    visualBtn = new QPushButton(this);
+    visualBtn->setFont(fontAwesome);
+    visualBtn->setGeometry(580, 291, 30, 30);
+    visualBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    visualBtn->setText("\uf26c");
+    visualBtn->setCursor(Qt::PointingHandCursor);
+    visualBtn->show();
 
     songTitle = new QLabel(this);
     songTitle->setText("");
@@ -114,8 +141,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     this->playlistWidget->setMouseTracking(true);
     playlistWidget->setGeometry(15, 400, 770, 160);
     playlistWidget->lower();
-    playlistWidget->setStyleSheet("padding: 10px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver;");
+    playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
+                                  "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
+                                  "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
     playlistWidget->show();
+
+    QScrollBar *vbar = playlistWidget->verticalScrollBar();
+    vbar->setStyle( new QCommonStyle );
+    vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #141414; }" \
+                        "QScrollBar::add-line:vertical { height: 0; }" \
+                        "QScrollBar::sub-line:vertical { height: 0; }" \
+                        "QScrollBar::handle:vertical { border-radius: 20px; width: 5px; background: gray; }" \
+                        "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
+                        "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
 
     QPushButton * addSong = new QPushButton (this);
     addSong->setFont(fontAwesome);
@@ -185,6 +223,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (backwardBtn, SIGNAL(clicked()), this, SLOT(backward()));
     connect (pauseBtn, SIGNAL(clicked()), this, SLOT(pause()));
     connect (repeatBtn, SIGNAL(clicked()), this, SLOT(changeRepeat()));
+    connect (shuffleBtn, SIGNAL(clicked()), this, SLOT(changeShuffle()));
+    connect (audio3dBtn, SIGNAL(clicked()), this, SLOT(audio3D()));
+    connect (equoBtn, SIGNAL(clicked()), this, SLOT(equalizer()));
 
     connect (volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(changeVolume(int)));
 
@@ -263,7 +304,11 @@ void MainWindow::setTitle () {
     songTitle->setText(QString::fromStdWString(name));
 }
 void MainWindow::setActive(QListWidgetItem * item) {
+    paused = true;
+    pauseBtn->setText("\uf04c"); // Set symbol to pause
+
     setActive (item->data(Qt::UserRole).toInt());
+    item->setForeground(mainColor);
 }
 void MainWindow::setActive (int index) {
     current = playlist.begin() + index;
@@ -339,9 +384,11 @@ void MainWindow::pause ()
 
     if (paused) {
         BASS_ChannelPlay(channel, false);
+        pauseBtn->setText("\uf04c"); // Set symbol to pause
     }
     else {
         BASS_ChannelPause(channel);
+        pauseBtn->setText("\uf04b"); // Set symbol to play
     }
 }
 void MainWindow::changeVolume (int vol)
@@ -349,6 +396,24 @@ void MainWindow::changeVolume (int vol)
     cout << vol << endl;
     volume = vol / 100.0f;
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+}
+void MainWindow::changeRepeat () {
+    if (shuffle == true)
+        changeShuffle();
+
+    repeat = !repeat;
+    cout << "Repeat - " << repeat << endl;
+    if (repeat) repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
+    else repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+}
+void MainWindow::changeShuffle () {
+    if (repeat == true)
+        changeRepeat();
+
+    shuffle = !shuffle;
+    cout << "Shuffle - " << shuffle << endl;
+    if (shuffle) shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
+    else shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
 }
 
 string MainWindow::seconds2string (float seconds) {
@@ -387,8 +452,28 @@ void MainWindow::updateTime() {
                 BASS_ChannelPlay(channel, true);
                 BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
             }
-            else if (shuffle) {
-                // Stuff...
+            else if (shuffle && playlist.size() > 1) {
+                int songID;
+                do {
+                    songID = rand() % playlist.size();
+                } while (songID == distance(playlist.begin(), current));
+
+                current = playlist.begin() + songID;
+
+                BASS_ChannelStop(channel);
+                channel = BASS_StreamCreateFile(FALSE, current->path, 0, 0, 0);
+
+                prerenderFft();
+
+                BASS_ChannelPlay(channel, true);
+                BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+
+                QString pos = QString::fromStdString(seconds2string(getPosition()));
+                songPosition->setText(pos);
+                QString len = QString::fromStdString(seconds2string(getDuration()));
+                songDuration->setText(len);
+
+                setTitle();
             } else {
                 forward();
             }
@@ -412,17 +497,11 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 
     painter.drawRect (50, 350, 700, 40);
 
-    //QImage cover("C:\\Users\\Hrach\\Documents\\Thesis\\build-ProjectAMP-Desktop_x86_windows_msys_pe_32bit-Release\\release\\Images\\cover-placeholder.jpg");
-
     QImageReader reader(":/Images/cover-placeholder.png");
     QImage cover = reader.read();
 
-    if(cover.isNull()) {
-        cout << reader.errorString().toStdString() << endl;
-    }
-
     if (cover.isNull()) {
-        cout << "File load Error!" << endl;
+        cout << reader.errorString().toStdString() << endl;
     }
     else {
         QBrush brush(cover);
@@ -433,9 +512,8 @@ void MainWindow::paintEvent(QPaintEvent * event) {
         painter.setBrush(brush);
         painter.drawRoundedRect(325, 60, 150, 150, 5, 5);
     }
-    //cover->setStyleSheet("font-size: 18px; border: 2px solid silver; border-radius: 5px; background-color: #141414; color: silver;");
 
-    color = QColor(255, 37, 79);
+    color = mainColor;
 
     if (liveSpec) {
         float fft[1024];

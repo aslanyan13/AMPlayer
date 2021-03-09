@@ -10,6 +10,7 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QMouseEventTransition>
+#include <QMessageBox>
 #include <QFileDialog>
 #include <QPainter>
 #include <QLabel>
@@ -21,6 +22,8 @@
 #include <QPixmap>
 #include <QFontDatabase>
 #include <QFont>
+#include <QScrollBar>
+#include <QCommonStyle>
 
 #include <iostream>
 #include <vector>
@@ -56,9 +59,22 @@ private slots:
     void changeVolume(int vol);
     void updateTime();
 
-    void changeRepeat () {
-        repeat = !repeat;
-        cout << "Repeat - " << repeat << endl;
+    void changeRepeat ();
+    void changeShuffle ();
+
+    void audio3D () {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("3D Audio");
+        msgBox.setText("3D Audio functions will be added soon!");
+        msgBox.setStyleSheet("background-color: #141414; color: silver;");
+        msgBox.exec();
+    }
+    void equalizer () {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Equalizer");
+        msgBox.setText("Equalizer will be added soon!");
+        msgBox.setStyleSheet("background-color: #141414; color: silver;");
+        msgBox.exec();
     }
 
 private:
@@ -83,7 +99,13 @@ private:
     QSlider * volumeSlider;
 
     QPushButton * repeatBtn;
+    QPushButton * shuffleBtn;
     QPushButton * pauseBtn;
+    QPushButton * audio3dBtn;
+    QPushButton * equoBtn;
+    QPushButton * metronomeBtn;
+    QPushButton * timerBtn;
+    QPushButton * visualBtn;
 
     QTimer * timer;
 
