@@ -49,6 +49,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
+    void reloadStyles();
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 

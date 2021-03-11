@@ -44,21 +44,21 @@ settingsWindow::settingsWindow(QWidget *parent) : QWidget(parent), ui(new Ui::se
     text1->setStyleSheet("color: silver; font-size: 14px;");
     text1->setText("System color");
 
-    QPushButton * colorBtns[8];
-
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 7; i++)
     {
         colorBtns[i] = new QPushButton(tab1);
-        colorBtns[i]->setProperty("index", i);
         colorBtns[i]->setCursor(Qt::PointingHandCursor);
-        colorBtns[i]->setStyleSheet("border: 0px solid black; background: " + tr(qcolorToStr(colors[i]).c_str()) + ";");
+        colorBtns[i]->setStyleSheet("padding: 0px; font-size: 20px; border: 0px solid black; background: " + tr(qcolorToStr(colors[i]).c_str()) + ";");
 
         colorBtns[i]->setGeometry(20 + i * 35, 40, 30, 30);
+        colorBtns[i]->raise();
         colorBtns[i]->show();
 
         // Doesn't work :c
-        connect(colorBtns[i], &QPushButton::clicked, [=] () {
-            cout << "Hello World!" << endl;
+        connect(colorBtns[i], &QPushButton::pressed, [=] () {
+            *mainColor = colors[i];
+            *mainColorStr = qcolorToStr(colors[i]);
+            this->reloadStyles();
         });
 
     }
@@ -78,10 +78,6 @@ void settingsWindow::changeColor () {
 
 void settingsWindow::init()
 {
-    int color = rand() % 7;
-    *mainColor = colors[color];
-    *mainColorStr = qcolorToStr(colors[color]);
-
     int id = QFontDatabase::addApplicationFont(":/Font Awesome 5 Pro Solid.ttf");
     QString family = QFontDatabase::applicationFontFamilies(id).at(0);
     QFont fontAwesome(family);
@@ -105,6 +101,10 @@ void settingsWindow::init()
 
     connect (closeBtn, SIGNAL(clicked()), this, SLOT(slot_close()));
 
+}
+
+void settingsWindow::reloadStyles() {
+    closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr->c_str()) + ";");
 }
 
 settingsWindow::~settingsWindow()

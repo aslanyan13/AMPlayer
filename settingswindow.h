@@ -2,6 +2,7 @@
 #define SETTINGSWINDOW_H
 
 #include <QWidget>
+#include <QMainWindow>
 #include <QLabel>
 #include <QPushButton>
 #include <QFont>
@@ -27,6 +28,7 @@ class settingsWindow : public QWidget
     Q_OBJECT
 
 public:
+    QPushButton * colorBtns[8];
     string * mainColorStr = nullptr;
     QColor * mainColor = nullptr;
 
@@ -42,6 +44,8 @@ private:
 
     void mouseMoveEvent (QMouseEvent * event);
     void mousePressEvent (QMouseEvent * event);
+
+    void reloadStyles();
     string qcolorToStr (QColor color);
 
     QPoint lastMousePosition;

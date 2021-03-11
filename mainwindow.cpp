@@ -590,7 +590,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     painter.setPen(QPen(Qt::transparent, 1, Qt::SolidLine, Qt::FlatCap));
 
     painter.drawRect (50, 350, 700, 40);
-/*
+
     QImageReader reader(":/Images/cover-placeholder.png");
     QImage cover = reader.read();
 
@@ -606,7 +606,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
         painter.setBrush(brush);
         painter.drawRoundedRect(325, 60, 150, 150, 5, 5);
     }
-*/
+
     color = mainColor;
 
     if (liveSpec) {
@@ -761,12 +761,23 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
 void MainWindow::settings () {
     settingsWin->mainColor = &mainColor;
     settingsWin->mainColorStr = &mainColorStr;
+
     settingsWin->init();
     settingsWin->raise();
     settingsWin->setFocus();
     settingsWin->show();
     settingsWin->move (this->pos().x() + 200, this->pos().y() + 150);
 
+    for (int i = 0; i < 7; i++)
+    {
+        connect(settingsWin->colorBtns[i], &QPushButton::pressed, [=] () {
+            reloadStyles();
+        });
+    }
+
+    reloadStyles();
+}
+void MainWindow::reloadStyles () {
     closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
     volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
                                     "border: 1px solid #999999; " \
