@@ -14,14 +14,17 @@ LIBS += -lkernel32 -lkernel32 -lgdi32 -lwinspool -lcomdlg32 -ladvapi32 -lshell32
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
+    settingswindow.cpp \
     song.cpp
 
 HEADERS += \
     mainwindow.h \
+    settingswindow.h \
     song.h
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    settingswindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

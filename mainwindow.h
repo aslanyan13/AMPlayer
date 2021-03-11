@@ -25,6 +25,8 @@
 #include <QScrollBar>
 #include <QCommonStyle>
 #include <QDirIterator>
+#include <QWheelEvent>
+#include <QHBoxLayout>
 
 #include <iostream>
 #include <string>
@@ -33,6 +35,7 @@
 
 #include "bass.h"
 #include "song.h"
+#include "settingswindow.h"
 
 using namespace std;
 
@@ -49,8 +52,6 @@ public:
     ~MainWindow();
 
 private slots:
-    void test();
-
     bool openFile ();
     bool openFolder ();
 
@@ -66,6 +67,7 @@ private slots:
     void changeRepeat ();
     void changeShuffle ();
 
+    void settings ();
     void audio3D () {
         QMessageBox msgBox;
         msgBox.setWindowTitle("3D Audio");
@@ -95,6 +97,9 @@ private slots:
         msgBox.exec();
     }
 
+    void slot_minimize() { setWindowState(Qt::WindowMinimized); };
+    void slot_close() { this->close(); };
+
 private:
     HSTREAM channel;
 
@@ -109,11 +114,13 @@ private:
     vector <Song> playlist;
     vector <Song>::iterator current;
 
+    QWidget * titlebarWidget;
     QListWidget * playlistWidget;
     QLabel * songTitle;
     QLabel * songDuration;
     QLabel * songPosition;
     QLabel * timecode;
+    QLabel * windowTitle;
     QSlider * volumeSlider;
 
     QPushButton * repeatBtn;
@@ -124,19 +131,26 @@ private:
     QPushButton * metronomeBtn;
     QPushButton * timerBtn;
     QPushButton * visualBtn;
+    QPushButton * closeBtn;
+    QPushButton * minimizeBtn;
+
+    QPoint lastMousePosition;
+    bool moving;
 
     QTimer * timer;
 
     Ui::MainWindow *ui;
+
+    settingsWindow * settingsWin = nullptr;
 
     void drawPlaylist();
     void setTitle();
     void prerenderFft ();
 
     void paintEvent(QPaintEvent * event);
-    void keyPressEvent(QKeyEvent * event) {};
     void mousePressEvent (QMouseEvent * event);
     void mouseMoveEvent (QMouseEvent * event);
+    void wheelEvent (QWheelEvent * event);
 
     string seconds2string (float seconds);
 

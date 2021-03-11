@@ -17,32 +17,64 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
 
     int id = QFontDatabase::addApplicationFont(":/Font Awesome 5 Pro Solid.ttf");
-    cout << id << endl;
     QString family = QFontDatabase::applicationFontFamilies(id).at(0);
     QFont fontAwesome(family);
 
     channel = NULL;
+
     timer = new QTimer();
-    timer->setInterval(6);
+    timer->setInterval(1);
     connect(timer, SIGNAL(timeout()), this, SLOT(updateTime()));
     timer->start();
 
-    // Window transparency
-    // this->setWindowFlags(Qt::CustomizeWindowHint);
-    // this->setWindowFlags(Qt::FramelessWindowHint);
+    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
 
     ui->setupUi(this);
 
     this->setStyleSheet("QMainWindow { background-color: #141414; }");
-    this->setWindowTitle("AMPlayer v1.0a");
 
-    /*
+    settingsWin = new settingsWindow(this);
+
+    QHBoxLayout * horizontalLayout = new QHBoxLayout();
+    horizontalLayout->setSpacing(0);
+    horizontalLayout->setMargin(0);
+
+    titlebarWidget = new QWidget(this);
+    titlebarWidget->setObjectName("titlebarWidget");
+    titlebarWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    titlebarWidget->setLayout(horizontalLayout);
+    titlebarWidget->setGeometry(0, 0, 800, 30);
+    titlebarWidget->setStyleSheet("color: silver;");
+
+    windowTitle = new QLabel(titlebarWidget);
+    windowTitle->setGeometry(0, 0, 800, 30);
+    windowTitle->setAlignment(Qt::AlignCenter);
+    windowTitle->setObjectName("windowTitle");
+    windowTitle->setText("AMPlayer v1.0a");
+
     QPushButton * menuBtn = new QPushButton(this);
-    menuBtn->setGeometry(15, 20, 30, 30);
-    menuBtn->setStyleSheet("border: 1px solid silver; background-color: #212121; color: silver;");
-    menuBtn->setText("Menu");
+    menuBtn->setFont(fontAwesome);
+    menuBtn->setGeometry(10, 10, 30, 30);
+    menuBtn->setStyleSheet("font-size: 20px; border: 0px solid silver; background-color: #141414; color: silver;");
+    menuBtn->setCursor(Qt::PointingHandCursor);
+    menuBtn->setText("\uf013");
     menuBtn->show();
-    */
+
+    closeBtn = new QPushButton(this);
+    closeBtn->setFont(fontAwesome);
+    closeBtn->setGeometry(760, 10, 30, 30);
+    closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
+    closeBtn->setCursor(Qt::PointingHandCursor);
+    closeBtn->setText("\uf00d");
+    closeBtn->show();
+
+    minimizeBtn = new QPushButton(this);
+    minimizeBtn->setFont(fontAwesome);
+    minimizeBtn->setGeometry(725, 8, 30, 30);
+    minimizeBtn->setStyleSheet("font-size: 16px; border: 0px solid silver; background-color: #141414; color: silver;");
+    minimizeBtn->setCursor(Qt::PointingHandCursor);
+    minimizeBtn->setText("\uf2d1");
+    minimizeBtn->show();
 
     pauseBtn = new QPushButton(this);
     pauseBtn->setFont(fontAwesome);
@@ -161,6 +193,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     addSong->setFont(fontAwesome);
     addSong->setGeometry(15, 570, 100, 20);
     addSong->setText("\uf319 Add Song");
+    addSong->setCursor(Qt::PointingHandCursor);
     addSong->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
     addSong->show();
 
@@ -168,6 +201,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     addFolder->setFont(fontAwesome);
     addFolder->setGeometry(125, 570, 100, 20);
     addFolder->setText("\uf07c Add Folder");
+    addFolder->setCursor(Qt::PointingHandCursor);
     addFolder->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
     addFolder->show();
 
@@ -191,6 +225,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     volumeSlider->setMaximum(100);
     volumeSlider->setMinimum(0);
     volumeSlider->setValue(100);
+    volumeSlider->setCursor(Qt::PointingHandCursor);
     volumeSlider->setGeometry(633, 301, 150, 20);
     volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
                                     "border: 1px solid #999999; " \
@@ -215,10 +250,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
 
-    // connect (menuBtn, SIGNAL(clicked()), this, SLOT(test()));
+    connect (menuBtn, SIGNAL(clicked()), this, SLOT(settings()));
     connect (addSong, SIGNAL(clicked()), this, SLOT(openFile()));
     connect (addFolder, SIGNAL(clicked()), this, SLOT(openFolder()));
 
+    connect (minimizeBtn, SIGNAL(clicked()), this, SLOT(slot_minimize()));
+    connect (closeBtn, SIGNAL(clicked()), this, SLOT(slot_close()));
     connect (forwardBtn, SIGNAL(clicked()), this, SLOT(forward()));
     connect (backwardBtn, SIGNAL(clicked()), this, SLOT(backward()));
     connect (pauseBtn, SIGNAL(clicked()), this, SLOT(pause()));
@@ -239,11 +276,6 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
-
-void MainWindow::test()
-{
-    cout << "Some event test..." << endl;
-}
 bool MainWindow::openFile ()
 {
     HWND win = NULL;
@@ -260,7 +292,25 @@ bool MainWindow::openFile ()
 
     if (!GetOpenFileName(&ofn)) return false;
     else {
+        // Changing file format to Qt format
+        for (int i = 0; i < MAX_PATH; i++)
+        {
+            if  (file[i] == L'\\') file[i] = L'/';
+        }
+
         Song temp(file);
+
+        // Checking if file already exist
+        if (count(playlist.begin(), playlist.end(), temp) != 0)
+        {
+            QMessageBox msgBox;
+            msgBox.setWindowTitle("Add file");
+            msgBox.setText("File already exists in playlist!");
+            msgBox.setStyleSheet("background-color: #141414; color: silver;");
+            msgBox.exec();
+            return true;
+        }
+
         temp.setName(file);
         temp.setNameFromPath();
         wcout << temp.path << endl;
@@ -281,13 +331,12 @@ bool MainWindow::openFile ()
 }
 bool MainWindow::openFolder () {
     QString folder = QFileDialog::getExistingDirectory(0, ("Select Folder with Songs"), QDir::homePath());
-    cout << folder.toStdString() << endl;
 
     if (folder.toStdString() == "")
         return false;
 
     QDir directory(folder);
-    QStringList musicFiles = directory.entryList(QStringList() << "*.mp3" << "*.MP3",QDir::Files|QDir::Readable);
+    QStringList musicFiles = directory.entryList(QStringList() << "*.mp3" << "*.mo3" << "*.wav" << "*.mp2" << "*.mp1",QDir::Files|QDir::Readable);
 
     for (int i = 0; i < musicFiles.length(); i++)
     {
@@ -296,11 +345,13 @@ bool MainWindow::openFolder () {
         wcscpy(tmp, fullpath.toStdWString().c_str());
 
         Song temp(tmp);
+
+        if (count(playlist.begin(), playlist.end(), temp) != 0)
+            continue;
+
         temp.setName(musicFiles[i].toStdWString());
         temp.setNameFromPath();
         playlist.push_back(temp);
-
-        // cout << musicFiles[i].toStdString() << endl;
     }
 
     QMessageBox msgBox;
@@ -329,8 +380,8 @@ void MainWindow::drawPlaylist() {
         QString path = QString::fromStdWString(wstring(playlist[i].path));
         QString name = QString::fromStdWString(to_wstring(i + 1) + L". " + playlist[i].getName());
 
-        //if (current == playlist.begin() + i)
-        //    songItem->setBackgroundColor(QColor(38, 160, 218));
+        if (current == playlist.begin() + i)
+           songItem->setBackgroundColor(mainColor);
 
         songItem->setData(Qt::UserRole, i);
         songItem->setData(1, path);
@@ -608,7 +659,10 @@ void MainWindow::prerenderFft ()
 
     int avgLen = 16;
 
+    float vol = volume;
+    changeVolume(0);
     BASS_ChannelPlay(channel, FALSE);
+
     float fft[1024];
     for (float i = 0; i < time; i+= time / 140, k++)
     {
@@ -631,8 +685,9 @@ void MainWindow::prerenderFft ()
     }
 
     BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, 0), BASS_POS_BYTE);
+    changeVolume(vol * 100);
 }
-// Need to fix child widget tracking issue
+
 void MainWindow::mouseMoveEvent (QMouseEvent * event) {
     float mouseX = event->pos().x();
     float mouseY = event->pos().y();
@@ -659,6 +714,13 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
     } else {
         playlistWidget->lower();
     }
+
+    if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
+        return;
+
+    if(event->buttons().testFlag(Qt::LeftButton) && moving) {
+        this->move(this->pos() + (event->pos() - lastMousePosition));
+    }
 }
 void MainWindow::mousePressEvent (QMouseEvent * event) {
     float mouseX = event->pos().x();
@@ -671,4 +733,68 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             liveSpec = !liveSpec;
         }
     }
+
+    if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
+        return;
+
+    if(event->button() == Qt::LeftButton) {
+        moving = true;
+        lastMousePosition = event->pos();
+    }
+}
+void MainWindow::wheelEvent(QWheelEvent * event) {
+    float mouseX = event->position().x();
+    float mouseY = event->position().y();
+
+    if (mouseX > 50 && mouseX < 750 && mouseY > 350 && mouseY < 390) {
+        if (event->angleDelta().ry() < 0)
+        {
+            double new_time = getPosition() - 3;
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+        } else {
+            double new_time = getPosition() + 3;
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+        }
+    }
+
+}
+void MainWindow::settings () {
+    settingsWin->mainColor = &mainColor;
+    settingsWin->mainColorStr = &mainColorStr;
+    settingsWin->init();
+
+    cout << mainColor.red() << " " << mainColor.green() << " " << mainColor.blue() << endl;
+
+    settingsWin->show();
+    settingsWin->move (this->pos().x() + 200, this->pos().y() + 150);
+
+    closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
+    volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
+                                    "border: 1px solid #999999; " \
+                                    "border-radius: 20px;" \
+                                    "background: #181818;"\
+                                    "margin: 7px 0;"\
+                                "}" \
+                               "QSlider::handle:horizontal {" \
+                                    "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); "\
+                                    "border: 1px solid #5c5c5c; "\
+                                    "width: 5px; " \
+                                    "margin: -5px -2px; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */ " \
+                                    "border-radius: 20px; "\
+                                "}"
+                                "QSlider::sub-page:horizontal {" \
+                                    "border-radius: 20px;" \
+                                    "margin: 7px 0;" \
+                                    "background: " + tr(mainColorStr.c_str()) + "; " \
+                                "}");
+    playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
+                                  "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
+                                  "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
+    QScrollBar *vbar = playlistWidget->verticalScrollBar();
+    vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #141414; }" \
+                        "QScrollBar::add-line:vertical { height: 0; }" \
+                        "QScrollBar::sub-line:vertical { height: 0; }" \
+                        "QScrollBar::handle:vertical { border-radius: 20px; width: 5px; background: gray; }" \
+                        "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
+                        "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
 }

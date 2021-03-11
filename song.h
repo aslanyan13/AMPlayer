@@ -44,6 +44,10 @@ public:
     wstring getName () {
         return name;
     }
+    bool operator==(const Song right) {
+        if (wcscmp(this->path, right.path) == 0) return true;
+        return false;
+    }
 };
 
 #endif // SONG_H
