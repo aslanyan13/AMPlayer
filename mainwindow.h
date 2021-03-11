@@ -8,6 +8,7 @@
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMenu>
+#include <QCloseEvent>
 #include <QMouseEvent>
 #include <QMouseEventTransition>
 #include <QMessageBox>
@@ -147,6 +148,9 @@ private:
     void setTitle();
     void prerenderFft ();
 
+    void closeEvent(QCloseEvent * event) {
+        this->settingsWin->close();
+    };
     void paintEvent(QPaintEvent * event);
     void mousePressEvent (QMouseEvent * event);
     void mouseMoveEvent (QMouseEvent * event);

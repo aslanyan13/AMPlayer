@@ -5,12 +5,15 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QFont>
+#include <QList>
+#include <QTabWidget>
 #include <QFontDatabase>
 #include <QHBoxLayout>
 #include <QColor>
 #include <QMouseEvent>
 #include <QGraphicsDropShadowEffect>
 
+#include <iostream>
 #include <string>
 
 using namespace std;
@@ -33,6 +36,7 @@ public:
     void init();
 private slots:
     void slot_close() { this->close(); };
+    void changeColor ();
 private:
     Ui::settingsWindow *ui;
 
@@ -47,6 +51,7 @@ private:
     QLabel * windowTitle;
     QPushButton * closeBtn;
     QPushButton * minimizeBtn;
+    QTabWidget  * tabs;
 
     QColor colors[16];
 };

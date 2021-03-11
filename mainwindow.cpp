@@ -27,13 +27,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(timer, SIGNAL(timeout()), this, SLOT(updateTime()));
     timer->start();
 
-    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
-
     ui->setupUi(this);
 
+    this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
     this->setStyleSheet("QMainWindow { background-color: #141414; }");
+    this->setWindowTitle("AMPlayer v1.0a");
 
-    settingsWin = new settingsWindow(this);
+    settingsWin = new settingsWindow();
 
     QHBoxLayout * horizontalLayout = new QHBoxLayout();
     horizontalLayout->setSpacing(0);
@@ -590,7 +590,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     painter.setPen(QPen(Qt::transparent, 1, Qt::SolidLine, Qt::FlatCap));
 
     painter.drawRect (50, 350, 700, 40);
-
+/*
     QImageReader reader(":/Images/cover-placeholder.png");
     QImage cover = reader.read();
 
@@ -606,7 +606,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
         painter.setBrush(brush);
         painter.drawRoundedRect(325, 60, 150, 150, 5, 5);
     }
-
+*/
     color = mainColor;
 
     if (liveSpec) {
@@ -762,9 +762,8 @@ void MainWindow::settings () {
     settingsWin->mainColor = &mainColor;
     settingsWin->mainColorStr = &mainColorStr;
     settingsWin->init();
-
-    cout << mainColor.red() << " " << mainColor.green() << " " << mainColor.blue() << endl;
-
+    settingsWin->raise();
+    settingsWin->setFocus();
     settingsWin->show();
     settingsWin->move (this->pos().x() + 200, this->pos().y() + 150);
 
