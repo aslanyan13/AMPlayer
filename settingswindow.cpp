@@ -54,7 +54,6 @@ settingsWindow::settingsWindow(QWidget *parent) : QWidget(parent), ui(new Ui::se
         colorBtns[i]->raise();
         colorBtns[i]->show();
 
-        // Doesn't work :c
         connect(colorBtns[i], &QPushButton::pressed, [=] () {
             *mainColor = colors[i];
             *mainColorStr = qcolorToStr(colors[i]);
@@ -89,15 +88,6 @@ void settingsWindow::init()
     closeBtn->setCursor(Qt::PointingHandCursor);
     closeBtn->setText("\uf00d");
     closeBtn->show();
-
-    /*
-    QLabel * info = new QLabel(this);
-    info->setText("Settings will be added soon!");
-    info->setGeometry(0, 50, 400, 50);
-    info->setStyleSheet("color: silver;");
-    info->setAlignment(Qt::AlignCenter);
-    info->show();
-    */
 
     connect (closeBtn, SIGNAL(clicked()), this, SLOT(slot_close()));
 
