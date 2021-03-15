@@ -55,6 +55,7 @@ public:
 
 private slots:
     bool openFile ();
+    void removeFile();
     bool openFolder ();
 
     void setActive(QListWidgetItem *);
@@ -125,6 +126,8 @@ private:
     QLabel * windowTitle;
     QSlider * volumeSlider;
 
+    QImage cover;
+
     QPushButton * repeatBtn;
     QPushButton * shuffleBtn;
     QPushButton * pauseBtn;
@@ -148,6 +151,10 @@ private:
     void drawPlaylist();
     void setTitle();
     void prerenderFft ();
+    void clearPrerenderedFft() {
+        for (int i = 0; i < 1024; i++)
+            prerenderedFft[i] = 3;
+    }
 
     void closeEvent(QCloseEvent * event) {
         this->settingsWin->close();

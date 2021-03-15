@@ -11,10 +11,7 @@ string mainColorStr = "rgb(255, 37, 79)";
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
-    for (int i = 0; i < 1024; i++)
-    {
-        prerenderedFft[i] = 3;
-    }
+    clearPrerenderedFft();
 
     int id = QFontDatabase::addApplicationFont(":/Font Awesome 5 Pro Solid.ttf");
     QString family = QFontDatabase::applicationFontFamilies(id).at(0);
@@ -75,6 +72,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     minimizeBtn->setCursor(Qt::PointingHandCursor);
     minimizeBtn->setText("\uf2d1");
     minimizeBtn->show();
+
+    QImageReader reader(":/Images/cover-placeholder.png");
+    cover = reader.read();
+
+    if (cover.isNull()) {
+        cout << reader.errorString().toStdString() << endl;
+    }
 
     pauseBtn = new QPushButton(this);
     pauseBtn->setFont(fontAwesome);
@@ -156,7 +160,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songTitle->show();
 
     QLabel * songInfo = new QLabel(this);
-    songInfo->setText("Genre, 44.1k MP3");
+    // songInfo->setText("Genre, 44.1k MP3");
     songInfo->setGeometry(200, 255, 400, 16);
     songInfo->setAlignment(Qt::AlignCenter);
     songInfo->setStyleSheet("/* border: 1px solid silver; */ background-color: #141414; color: gray;");
@@ -189,17 +193,34 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                         "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
                         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
 
+    QScrollBar *hbar = playlistWidget->horizontalScrollBar();
+    hbar->setStyle( new QCommonStyle );
+    hbar->setStyleSheet("QScrollBar:horizontal { outline: 0; border-radius: 20px; border: 0px solid black; height: 5px; background: #141414; }" \
+                        "QScrollBar::add-line:horizontal { height: 0; }" \
+                        "QScrollBar::sub-line:horizontal { height: 0; }" \
+                        "QScrollBar::handle:horizontal { border-radius: 20px; height: 5px; background: gray; }" \
+                        "QScrollBar::handle:horizontal:hover { border-radius: 20px; height: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
+                        "QScrollBar::add-page:horizontal, QScrollBar::sub-page:vertical { height: 0px; }");
+
     QPushButton * addSong = new QPushButton (this);
     addSong->setFont(fontAwesome);
-    addSong->setGeometry(15, 570, 100, 20);
-    addSong->setText("\uf319 Add Song");
+    addSong->setGeometry(15, 570, 20, 20);
+    addSong->setText("\uf067");
     addSong->setCursor(Qt::PointingHandCursor);
     addSong->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
     addSong->show();
 
+    QPushButton * removeSongBtn = new QPushButton (this);
+    removeSongBtn->setFont(fontAwesome);
+    removeSongBtn->setGeometry(45, 570, 20, 20);
+    removeSongBtn->setText("\uf068");
+    removeSongBtn->setCursor(Qt::PointingHandCursor);
+    removeSongBtn->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
+    removeSongBtn->show();
+
     QPushButton * addFolder = new QPushButton (this);
     addFolder->setFont(fontAwesome);
-    addFolder->setGeometry(125, 570, 100, 20);
+    addFolder->setGeometry(75, 570, 100, 20);
     addFolder->setText("\uf07c Add Folder");
     addFolder->setCursor(Qt::PointingHandCursor);
     addFolder->setStyleSheet("border-radius: 5px; border: 1px solid silver; background-color: #141414; color: silver;");
@@ -252,6 +273,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect (menuBtn, SIGNAL(clicked()), this, SLOT(settings()));
     connect (addSong, SIGNAL(clicked()), this, SLOT(openFile()));
+    connect (removeSongBtn, SIGNAL(clicked()), this, SLOT(removeFile()));
     connect (addFolder, SIGNAL(clicked()), this, SLOT(openFolder()));
 
     connect (minimizeBtn, SIGNAL(clicked()), this, SLOT(slot_minimize()));
@@ -329,6 +351,24 @@ bool MainWindow::openFile ()
 
     return true;
 }
+void MainWindow::removeFile() {
+    int index = playlistWidget->currentItem()->data(Qt::UserRole).toInt();
+    cout << index << endl;
+
+    if (index == current - playlist.begin())
+    {
+        BASS_ChannelStop(channel);
+        channel = NULL;
+        songTitle->setText("");
+        if (!paused) pause();
+        clearPrerenderedFft();
+        songPosition->setText("00:00");
+        songDuration->setText("00:00");
+    }
+
+    playlist.erase(playlist.begin() + index);
+    drawPlaylist();
+}
 bool MainWindow::openFolder () {
     QString folder = QFileDialog::getExistingDirectory(0, ("Select Folder with Songs"), QDir::homePath());
 
@@ -338,6 +378,7 @@ bool MainWindow::openFolder () {
     QDir directory(folder);
     QStringList musicFiles = directory.entryList(QStringList() << "*.mp3" << "*.mo3" << "*.wav" << "*.mp2" << "*.mp1",QDir::Files|QDir::Readable);
 
+    int duplicatesCount = 0;
     for (int i = 0; i < musicFiles.length(); i++)
     {
         wchar_t tmp[MAX_PATH];
@@ -347,8 +388,10 @@ bool MainWindow::openFolder () {
         Song temp(tmp);
 
         if (count(playlist.begin(), playlist.end(), temp) != 0)
+        {
+            duplicatesCount++;
             continue;
-
+        }
         temp.setName(musicFiles[i].toStdWString());
         temp.setNameFromPath();
         playlist.push_back(temp);
@@ -357,9 +400,13 @@ bool MainWindow::openFolder () {
     QMessageBox msgBox;
     msgBox.setWindowTitle("Files adding");
 
-    if (musicFiles.length() > 0) {
-        msgBox.setText(tr(to_string(musicFiles.length()).c_str()) + " files added to playlist successfully!");
-    } else {
+    if (musicFiles.length() > 0 && duplicatesCount != musicFiles.length()) {
+        msgBox.setText(tr(to_string(musicFiles.length() - duplicatesCount).c_str()) + " new files added to playlist successfully!");
+    }
+    else if (duplicatesCount == musicFiles.length() && musicFiles.length() > 0) {
+        msgBox.setText ("0 new files added!");
+    }
+    else if (musicFiles.length() == 0) {
         msgBox.setText("There are no audio files in this folder!");
     }
 
@@ -370,7 +417,6 @@ bool MainWindow::openFolder () {
 
     return true;
 }
-
 void MainWindow::drawPlaylist() {
     playlistWidget->clear();
 
@@ -427,10 +473,19 @@ void MainWindow::forward () {
     if (channel == NULL || playlist.size() == 1)
         return;
 
-    cout << "Distance - " << distance (playlist.end(), current) << endl;
-    current++;
-    cout << "Distance - " << distance (playlist.end(), current) << endl;
+    if (shuffle) {
+        int songID;
+        do {
+            songID = rand() % playlist.size();
+        } while (songID == distance(playlist.begin(), current));
+
+        current = playlist.begin() + songID;
+    }
+    else current++;
+
     if (distance (playlist.end(), current) >= 0) current = playlist.begin();
+
+    playlistWidget->setCurrentRow(current - playlist.begin());
 
     BASS_ChannelStop(channel);
     channel = BASS_StreamCreateFile(FALSE, current->path, 0, 0, 0);
@@ -451,12 +506,22 @@ void MainWindow::backward () {
     if (channel == NULL || playlist.size() == 1)
         return;
 
-    current--;
-    cout << "Distance - " << distance (playlist.begin(), current) << endl;
+    if (shuffle) {
+        int songID;
+        do {
+            songID = rand() % playlist.size();
+        } while (songID == distance(playlist.begin(), current));
+
+        current = playlist.begin() + songID;
+    }
+    else current--;
+
     if (distance (playlist.begin(), current) < 0) current = playlist.end() - 1;
 
     BASS_ChannelStop(channel);
     channel = BASS_StreamCreateFile(FALSE, current->path, 0, 0, 0);
+
+    playlistWidget->setCurrentRow(current - playlist.begin());
 
     prerenderFft();
 
@@ -496,7 +561,7 @@ void MainWindow::changeRepeat () {
         changeShuffle();
 
     repeat = !repeat;
-    cout << "Repeat - " << repeat << endl;
+
     if (repeat) repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
     else repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
 }
@@ -505,7 +570,7 @@ void MainWindow::changeShuffle () {
         changeRepeat();
 
     shuffle = !shuffle;
-    cout << "Shuffle - " << shuffle << endl;
+
     if (shuffle) shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
     else shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
 }
@@ -554,6 +619,8 @@ void MainWindow::updateTime() {
 
                 current = playlist.begin() + songID;
 
+                playlistWidget->setCurrentRow(current - playlist.begin());
+
                 BASS_ChannelStop(channel);
                 channel = BASS_StreamCreateFile(FALSE, current->path, 0, 0, 0);
 
@@ -591,17 +658,11 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 
     painter.drawRect (50, 350, 700, 40);
 
-    QImageReader reader(":/Images/cover-placeholder.png");
-    QImage cover = reader.read();
-
-    if (cover.isNull()) {
-        cout << reader.errorString().toStdString() << endl;
-    }
-    else {
+    if (!cover.isNull()) {
         QBrush brush(cover);
         QTransform transform;
         transform.scale(0.3, 0.3);
-        transform.translate(80, 200);
+        transform.translate(85, 200);
         brush.setTransform(transform);
         painter.setBrush(brush);
         painter.drawRoundedRect(325, 60, 150, 150, 5, 5);
@@ -618,6 +679,8 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             if (h < 3) h = 3;
             if (h > 40) h = 40;
 
+            if (channel == NULL) h = 3;
+
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
@@ -632,7 +695,6 @@ void MainWindow::paintEvent(QPaintEvent * event) {
         }
     } else {
         for (int i = 0; i < 140; i++) {
-
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
@@ -673,7 +735,7 @@ void MainWindow::prerenderFft ()
             max += sqrt(fft[j]) * 3 * 40 - 4;
 
         max /= avgLen;
-        max *= 2;
+        max *= 3;
 
         if (max <= 3) max = 3;
         else if (max > 40) max = 40;
@@ -728,7 +790,15 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
 
     if (mouseX > 50 && mouseX < 750 && mouseY > 350 && mouseY < 390) {
         if (event->button() == Qt::LeftButton)
+        {
+            if (getPosition() == getDuration())
+            {
+                BASS_ChannelStop(channel);
+                BASS_ChannelPlay(channel, true);
+            }
             BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, ((mouseX - 50) / (700.0f)) * getDuration()), BASS_POS_BYTE);
+
+        }
         else if (event->button() == Qt::RightButton) {
             liveSpec = !liveSpec;
         }
@@ -774,8 +844,6 @@ void MainWindow::settings () {
             reloadStyles();
         });
     }
-
-    reloadStyles();
 }
 void MainWindow::reloadStyles () {
     closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
@@ -807,4 +875,7 @@ void MainWindow::reloadStyles () {
                         "QScrollBar::handle:vertical { border-radius: 20px; width: 5px; background: gray; }" \
                         "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
                         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
+
+    if (shuffle) shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
+    if (repeat) repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
 }
