@@ -15,8 +15,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     XMLreader = new PlaylistReader(QDir::currentPath() + "/XML/playlists.xml");
     playlists = XMLreader->readPlaylists();
 
-    currentPlaylistName = playlists.begin()->first; // Settings current playlist name
-    playlist = playlists[currentPlaylistName];      // Setting current playlist
+    if (playlists.size() > 0)
+    {
+        currentPlaylistName = playlists.begin()->first; // Settings current playlist name
+        playlist = playlists[currentPlaylistName];      // Setting current playlist
+    }
+    else {
+        currentPlaylistName = "Default"; // Settings current playlist name
+        playlist = playlists[currentPlaylistName];      // Setting current playlist
+    }
 
     clearPrerenderedFft();
 
@@ -488,6 +495,7 @@ void MainWindow::changeCurrentPlaylist (QListWidgetItem * item) {
     currentPlaylistName = item->text();
 
     drawPlaylist();
+    drawAllPlaylists();
 }
 void MainWindow::setActive(QListWidgetItem * item) {
     paused = true;
