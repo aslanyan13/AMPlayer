@@ -32,11 +32,13 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
 #include <math.h>
 
 #include "bass.h"
 #include "song.h"
 #include "settingswindow.h"
+#include "playlistreader.h"
 
 using namespace std;
 
@@ -58,6 +60,7 @@ private slots:
     void removeFile();
     bool openFolder ();
 
+    void changeCurrentPlaylist (QListWidgetItem *);
     void setActive(QListWidgetItem *);
     void setActive(int index);
 
@@ -114,11 +117,17 @@ private:
     float volume = 1;
     float prerenderedFft[1024];
 
+    map <QString, vector <Song>> playlists;
+
+    QString currentPlaylistName;
     vector <Song> playlist;
     vector <Song>::iterator current;
 
     QWidget * titlebarWidget;
+
+    QListWidget * playlistsWidget;
     QListWidget * playlistWidget;
+
     QLabel * songTitle;
     QLabel * songDuration;
     QLabel * songPosition;
@@ -146,8 +155,10 @@ private:
 
     Ui::MainWindow *ui;
 
+    PlaylistReader * XMLreader;
     settingsWindow * settingsWin = nullptr;
 
+    void drawAllPlaylists();
     void drawPlaylist();
     void setTitle();
     void prerenderFft ();

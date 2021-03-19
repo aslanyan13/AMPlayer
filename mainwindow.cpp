@@ -11,6 +11,13 @@ string mainColorStr = "rgb(255, 37, 79)";
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    // Reading playlists from XML file
+    XMLreader = new PlaylistReader(QDir::currentPath() + "/XML/playlists.xml");
+    playlists = XMLreader->readPlaylists();
+
+    currentPlaylistName = playlists.begin()->first; // Settings current playlist name
+    playlist = playlists[currentPlaylistName];      // Setting current playlist
+
     clearPrerenderedFft();
 
     int id = QFontDatabase::addApplicationFont(":/Font Awesome 5 Pro Solid.ttf");
@@ -177,12 +184,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     playlistWidget = new QListWidget (this);
 
     this->playlistWidget->setMouseTracking(true);
-    playlistWidget->setGeometry(15, 400, 770, 160);
+    playlistWidget->setGeometry(15, 400, 570, 160);
     playlistWidget->lower();
     playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
                                   "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
                                   "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
     playlistWidget->show();
+
+    playlistsWidget = new QListWidget (this);
+    playlistsWidget->setGeometry (600, 400, 185, 160);
+    playlistsWidget->lower();
+    playlistsWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
+                                  "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
+                                  "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
+    playlistsWidget->show();
 
     QScrollBar *vbar = playlistWidget->verticalScrollBar();
     vbar->setStyle( new QCommonStyle );
@@ -270,6 +285,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     volumeSlider->show();
 
     connect(playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
+    connect(playlistsWidget, SIGNAL(itemClicked(QListWidgetItem *)), this, SLOT(changeCurrentPlaylist(QListWidgetItem *)));
 
     connect (menuBtn, SIGNAL(clicked()), this, SLOT(settings()));
     connect (addSong, SIGNAL(clicked()), this, SLOT(openFile()));
@@ -292,10 +308,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     this->setMouseTracking(true);
     this->centralWidget()->setMouseTracking(true);
+
+    drawPlaylist();
+    drawAllPlaylists();
 }
 
 MainWindow::~MainWindow()
 {
+    playlists[currentPlaylistName] = playlist;
+    XMLreader->writePlaylists(playlists);
     delete ui;
 }
 bool MainWindow::openFile ()
@@ -417,6 +438,24 @@ bool MainWindow::openFolder () {
 
     return true;
 }
+void MainWindow::drawAllPlaylists ()
+{
+    playlistsWidget->clear();
+
+    int i = 0;
+    for (auto &playlist : playlists)
+    {
+        QListWidgetItem *  playlistItem = new QListWidgetItem(playlistsWidget);
+
+        playlistItem->setText(playlist.first);
+        playlistsWidget->addItem(playlistItem);
+
+        if (playlist.first == currentPlaylistName)
+            playlistsWidget->setCurrentRow(i);
+
+        i++;
+    }
+}
 void MainWindow::drawPlaylist() {
     playlistWidget->clear();
 
@@ -425,9 +464,6 @@ void MainWindow::drawPlaylist() {
         QListWidgetItem *  songItem = new QListWidgetItem(playlistWidget);
         QString path = QString::fromStdWString(wstring(playlist[i].path));
         QString name = QString::fromStdWString(to_wstring(i + 1) + L". " + playlist[i].getName());
-
-        if (current == playlist.begin() + i)
-           songItem->setBackgroundColor(mainColor);
 
         songItem->setData(Qt::UserRole, i);
         songItem->setData(1, path);
@@ -442,6 +478,16 @@ void MainWindow::setTitle () {
         name = name.substr(0, 32) + L"...";
 
     songTitle->setText(QString::fromStdWString(name));
+}
+void MainWindow::changeCurrentPlaylist (QListWidgetItem * item) {
+    playlists[currentPlaylistName] = playlist;
+
+    cout << item->text().toStdString() << endl;
+
+    playlist = playlists[item->text()];
+    currentPlaylistName = item->text();
+
+    drawPlaylist();
 }
 void MainWindow::setActive(QListWidgetItem * item) {
     paused = true;
@@ -770,11 +816,16 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
         timecode->hide();
     }
 
-    if (mouseX > 15 && mouseX < 785 && mouseY > 400 && mouseY < 570)
+    if (mouseX >= 15 && mouseX <= 575 && mouseY >= 400 && mouseY <= 560)
     {
         playlistWidget->raise();
+    }
+    else if (mouseX >= 600 && mouseX <= 785 && mouseY >= 400 && mouseY <= 560)
+    {
+        playlistsWidget->raise();
     } else {
         playlistWidget->lower();
+        playlistsWidget->lower();
     }
 
     if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
