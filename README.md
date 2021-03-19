@@ -1,2 +1,2 @@
-# AMP Player
+# AMPlayer
 Aslanyan Music Player (Graduation work)
