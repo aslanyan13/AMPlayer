@@ -8,6 +8,7 @@
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMenu>
+#include <QInputDialog>
 #include <QCloseEvent>
 #include <QMouseEvent>
 #include <QMouseEventTransition>
@@ -25,6 +26,7 @@
 #include <QFont>
 #include <QScrollBar>
 #include <QCommonStyle>
+#include <QLineEdit>
 #include <QDirIterator>
 #include <QWheelEvent>
 #include <QHBoxLayout>
@@ -59,6 +61,9 @@ private slots:
     bool openFile ();
     void removeFile();
     bool openFolder ();
+
+    void createPlaylist();
+    void removePlaylist();
 
     void changeCurrentPlaylist (QListWidgetItem *);
     void setActive(QListWidgetItem *);
@@ -103,6 +108,8 @@ private slots:
         msgBox.exec();
     }
 
+    void colorChange();
+
     void slot_minimize() { setWindowState(Qt::WindowMinimized); };
     void slot_close() { this->close(); };
 
@@ -113,6 +120,7 @@ private:
     bool repeat = false;
     bool shuffle = false;
     bool liveSpec = false;
+    bool colorChanging = false;
 
     float volume = 1;
     float prerenderedFft[1024];
@@ -122,6 +130,8 @@ private:
     QString currentPlaylistName;
     vector <Song> playlist;
     vector <Song>::iterator current;
+
+    QLineEdit * searchSong;
 
     QWidget * titlebarWidget;
 

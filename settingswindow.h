@@ -30,7 +30,9 @@ class settingsWindow : public QWidget
 public:
     QPushButton * colorBtns[8];
     string * mainColorStr = nullptr;
+    string qcolorToStr (QColor color);
     QColor * mainColor = nullptr;
+    QColor colors[16];
 
     explicit settingsWindow(QWidget *parent = nullptr);
     ~settingsWindow();
@@ -46,7 +48,6 @@ private:
     void mousePressEvent (QMouseEvent * event);
 
     void reloadStyles();
-    string qcolorToStr (QColor color);
 
     QPoint lastMousePosition;
     bool moving;
@@ -57,7 +58,7 @@ private:
     QPushButton * minimizeBtn;
     QTabWidget  * tabs;
 
-    QColor colors[16];
+
 };
 
 #endif // SETTINGSWINDOW_H
