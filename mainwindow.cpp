@@ -4,6 +4,7 @@
 QColor mainColor(255, 37, 79);
 QColor nextColor(255, 37, 79);
 string mainColorStr = "rgb(255, 37, 79)";
+int colorChangeSpeed = 20;
 
 // rgb(255, 37, 79)  - Raspberry color
 // rgb(37, 255, 20)  - Neon green color
@@ -12,16 +13,6 @@ string mainColorStr = "rgb(255, 37, 79)";
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
-    fifo_map <QString, vector<Song>> test;
-
-    test["Test 3"] = vector<Song> ();
-    test["Test 5"] = vector<Song> ();
-    test["Test 4"] = vector<Song> ();
-    test["Test 2"] = vector<Song> ();
-    test["Test 1"] = vector<Song> ();
-
-    cout << test.find("Test 5")->first.toStdString() << endl;
-
     // Reading playlists from XML file
     XMLreader = new PlaylistReader(QDir::currentPath() + "/XML/playlists.xml");
     XMLreader->readPlaylists(playlists);
@@ -1028,8 +1019,11 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
 
 }
 void MainWindow::settings () {
+    bool * colorChangePtr = &colorChanging;
+    settingsWin->colorChanger = colorChangePtr;
     settingsWin->mainColor = &mainColor;
     settingsWin->mainColorStr = &mainColorStr;
+    settingsWin->colorChangeSpeed = &colorChangeSpeed;
 
     settingsWin->init();
     settingsWin->raise();
@@ -1119,8 +1113,6 @@ void MainWindow::colorChange()
 {
     if (!colorChanging) return;
 
-    const int speed = 20;
-
     static int dr = 0;
     static int dg = 0;
     static int db = 0;
@@ -1128,36 +1120,36 @@ void MainWindow::colorChange()
     if (mainColor == nextColor) {
         nextColor = settingsWin->colors[rand() % 7];
 
-        dr = (mainColor.red() - nextColor.red()) / speed;
-        dg = (mainColor.green() - nextColor.green()) / speed;
-        db = (mainColor.blue() - nextColor.blue()) / speed;
+        dr = (mainColor.red() - nextColor.red()) / colorChangeSpeed;
+        dg = (mainColor.green() - nextColor.green()) / colorChangeSpeed;
+        db = (mainColor.blue() - nextColor.blue()) / colorChangeSpeed;
 
     } else {
         if (dr < 0) {
             dr++;
-            mainColor.setRed(mainColor.red() + speed);
+            mainColor.setRed(mainColor.red() + colorChangeSpeed);
         }
         if (dr > 0) {
             dr--;
-            mainColor.setRed(mainColor.red() - speed);
+            mainColor.setRed(mainColor.red() - colorChangeSpeed);
         }
 
         if (dg < 0) {
             dg++;
-            mainColor.setGreen(mainColor.green() + speed);
+            mainColor.setGreen(mainColor.green() + colorChangeSpeed);
         }
         if (dg > 0) {
             dg--;
-            mainColor.setGreen(mainColor.green() - speed);
+            mainColor.setGreen(mainColor.green() - colorChangeSpeed);
         }
 
         if (db < 0) {
             db++;
-            mainColor.setBlue(mainColor.blue() + speed);
+            mainColor.setBlue(mainColor.blue() + colorChangeSpeed);
         }
         if (db > 0) {
             db--;
-            mainColor.setBlue(mainColor.blue() - speed);
+            mainColor.setBlue(mainColor.blue() - colorChangeSpeed);
         }
 
         if (dr == 0) mainColor.setRed(nextColor.red());

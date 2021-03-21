@@ -5,7 +5,9 @@
 #include <QMainWindow>
 #include <QLabel>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QFont>
+#include <QSlider>
 #include <QList>
 #include <QTabWidget>
 #include <QFontDatabase>
@@ -30,8 +32,11 @@ class settingsWindow : public QWidget
 public:
     QPushButton * colorBtns[8];
     string * mainColorStr = nullptr;
-    string qcolorToStr (QColor color);
     QColor * mainColor = nullptr;
+    bool * colorChanger = nullptr;
+    int * colorChangeSpeed = nullptr;
+
+    string qcolorToStr (QColor color);
     QColor colors[16];
 
     explicit settingsWindow(QWidget *parent = nullptr);

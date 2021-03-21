@@ -13,11 +13,12 @@ settingsWindow::settingsWindow(QWidget *parent) : QWidget(parent), ui(new Ui::se
 
     ui->setupUi(this);
 
-    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint | Qt::Window); // Window transparency
+    // setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint | Qt::Window); // Window transparency
 
-    this->setStyleSheet("QWidget { background-color: #141414; }");
+    this->setStyleSheet("QWidget { background-color: #141414; color: silver; }");
     this->setWindowTitle("Settings");
 
+    /*
     QHBoxLayout * horizontalLayout = new QHBoxLayout();
     horizontalLayout->setSpacing(0);
     horizontalLayout->setMargin(0);
@@ -35,20 +36,22 @@ settingsWindow::settingsWindow(QWidget *parent) : QWidget(parent), ui(new Ui::se
     windowTitle->setObjectName("windowTitle");
     windowTitle->setText("Settings");
 
+    */
+
     tabs = new QTabWidget(this);
 
     QWidget * tab1 = new QWidget(tabs);
     tab1->setStyleSheet("color: silver; padding: 15px");
 
     QLabel * text1 = new QLabel (tab1);
-    text1->setStyleSheet("color: silver; font-size: 14px;");
+    text1->setStyleSheet("color: silver; font-size: 12px;");
     text1->setText("System color");
 
     for (int i = 0; i < 7; i++)
     {
         colorBtns[i] = new QPushButton(tab1);
         colorBtns[i]->setCursor(Qt::PointingHandCursor);
-        colorBtns[i]->setStyleSheet("padding: 0px; font-size: 20px; border: 0px solid black; background: " + tr(qcolorToStr(colors[i]).c_str()) + ";");
+        colorBtns[i]->setStyleSheet("padding: 0px; border: 0px solid black; background: " + tr(qcolorToStr(colors[i]).c_str()) + ";");
 
         colorBtns[i]->setGeometry(20 + i * 35, 40, 30, 30);
         colorBtns[i]->raise();
@@ -61,9 +64,43 @@ settingsWindow::settingsWindow(QWidget *parent) : QWidget(parent), ui(new Ui::se
         });
     }
 
+    QRadioButton * colorChangingRadio = new QRadioButton("Auto color change", tab1);
+    colorChangingRadio->setStyleSheet("color: silver; font-size: 12px;");
+    colorChangingRadio->move(5, 80);
+    colorChangingRadio->show();
+
+    connect (colorChangingRadio, &QRadioButton::clicked, [=]() {
+        *colorChanger = colorChangingRadio->isChecked();
+    });
+
+    QSlider * colorSpeedSlider = new QSlider(Qt::Horizontal, tab1);
+    colorSpeedSlider->move(5, 120);
+    colorSpeedSlider->setValue(20);
+    colorSpeedSlider->setMinimum(1);
+    colorSpeedSlider->setMaximum(30);
+    colorSpeedSlider->setStyleSheet("QSlider::groove:horizontal {" \
+                                    "border: 1px solid #999999; " \
+                                    "border-radius: 20px;" \
+                                    "background: #181818;"\
+                                    "margin: 7px 0;"\
+                                "}" \
+                               "QSlider::handle:horizontal {" \
+                                    "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); "\
+                                    "border: 1px solid #5c5c5c; "\
+                                    "width: 5px; " \
+                                    "margin: -5px -2px; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */ " \
+                                    "border-radius: 20px; "\
+                                "}");
+
+    colorSpeedSlider->show();
+
+    connect (colorSpeedSlider, &QSlider::valueChanged, [=]() {
+        *colorChangeSpeed = colorSpeedSlider->value();
+    });
+
     tabs->addTab(tab1, tr("Theme"));
     tabs->setStyleSheet("color: silver");
-    tabs->setGeometry(10, 50, 380, 230);
+    tabs->setGeometry(10, 20, 380, 230);
 
     tabs->show();
 
@@ -80,6 +117,7 @@ void settingsWindow::init()
     QString family = QFontDatabase::applicationFontFamilies(id).at(0);
     QFont fontAwesome(family);
 
+    /*
     closeBtn = new QPushButton(this);
     closeBtn->setFont(fontAwesome);
     closeBtn->setGeometry(360, 10, 30, 30);
@@ -89,11 +127,11 @@ void settingsWindow::init()
     closeBtn->show();
 
     connect (closeBtn, SIGNAL(clicked()), this, SLOT(slot_close()));
-
+    */
 }
 
 void settingsWindow::reloadStyles() {
-    closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr->c_str()) + ";");
+    // closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr->c_str()) + ";");
 }
 
 settingsWindow::~settingsWindow()
@@ -102,14 +140,16 @@ settingsWindow::~settingsWindow()
 }
 
 void settingsWindow::mouseMoveEvent (QMouseEvent * event) {
-    if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
+    /*if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
         return;
 
     if(event->buttons().testFlag(Qt::LeftButton) && moving) {
         this->move(this->pos() + (event->pos() - lastMousePosition));
     }
+    */
 }
 void settingsWindow::mousePressEvent (QMouseEvent * event) {
+    /*
     if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
         return;
 
@@ -117,6 +157,7 @@ void settingsWindow::mousePressEvent (QMouseEvent * event) {
         moving = true;
         lastMousePosition = event->pos();
     }
+    */
 }
 string settingsWindow::qcolorToStr (QColor color)
 {
