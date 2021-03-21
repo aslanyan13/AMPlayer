@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>Images/cover-placeholder.png</file>
-        <file>Font Awesome 5 Pro Solid.ttf</file>
-        <file>XML/playlists.xml</file>
-    </qresource>
-</RCC>
