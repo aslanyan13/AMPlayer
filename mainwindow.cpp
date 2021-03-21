@@ -12,9 +12,19 @@ string mainColorStr = "rgb(255, 37, 79)";
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    fifo_map <QString, vector<Song>> test;
+
+    test["Test 3"] = vector<Song> ();
+    test["Test 5"] = vector<Song> ();
+    test["Test 4"] = vector<Song> ();
+    test["Test 2"] = vector<Song> ();
+    test["Test 1"] = vector<Song> ();
+
+    cout << test.find("Test 5")->first.toStdString() << endl;
+
     // Reading playlists from XML file
     XMLreader = new PlaylistReader(QDir::currentPath() + "/XML/playlists.xml");
-    playlists = XMLreader->readPlaylists();
+    XMLreader->readPlaylists(playlists);
 
     if (playlists.size() > 0)
     {
@@ -23,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
     else {
         currentPlaylistName = "Default"; // Settings current playlist name
-        playlist = playlists[currentPlaylistName];      // Setting current playlist
+        playlist = playlists["Default"];      // Setting current playlist
     }
 
     clearPrerenderedFft();
@@ -35,7 +45,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     channel = NULL;
 
     timer = new QTimer();
-    timer->setInterval(16);
+    timer->setInterval(1);
     connect(timer, SIGNAL(timeout()), this, SLOT(updateTime()));
     timer->start();
 
@@ -437,9 +447,8 @@ bool MainWindow::openFile ()
     return true;
 }
 void MainWindow::removeFile() {
-    // int index = playlistWidget->currentItem()->data(Qt::UserRole).toInt();
-    int index = playlistWidget->currentRow();
-    cout << index << endl;
+    int index = playlistWidget->currentItem()->data(Qt::UserRole).toInt();
+    // cout << index << endl;
 
     if (index == -1) return;
 
@@ -1110,7 +1119,7 @@ void MainWindow::colorChange()
 {
     if (!colorChanging) return;
 
-    const int speed = 3;
+    const int speed = 20;
 
     static int dr = 0;
     static int dg = 0;

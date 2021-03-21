@@ -4,10 +4,8 @@ PlaylistReader::PlaylistReader()
 {
 
 }
-map <QString, vector <Song>> PlaylistReader::readPlaylists ()
+void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlists)
 {
-    map <QString, vector <Song>> playlists;
-
     QFile file(filename);
 
     if (!file.open(QFile::ReadOnly | QFile::Text))
@@ -49,10 +47,8 @@ map <QString, vector <Song>> PlaylistReader::readPlaylists ()
             xmlReader.readNext();
         }
     }
-
-    return playlists;
 }
-void PlaylistReader::writePlaylists(map<QString, vector<Song>> playlists)
+void PlaylistReader::writePlaylists(fifo_map<QString, vector<Song>> playlists)
 {
     QFile file(filename);
 

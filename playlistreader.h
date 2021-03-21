@@ -12,8 +12,10 @@
 #include <map>
 
 #include "song.h"
+#include "fifo_map.hpp"
 
 using namespace std;
+using nlohmann::fifo_map;
 
 class PlaylistReader
 {
@@ -24,8 +26,8 @@ public:
     PlaylistReader();
     PlaylistReader(QString f) : filename(f) {};
 
-    map <QString, vector <Song>> readPlaylists ();
-    void writePlaylists(map <QString, vector <Song>> playlists);
+    void readPlaylists (fifo_map <QString, vector <Song>> & playlists);
+    void writePlaylists(fifo_map <QString, vector <Song>> playlists);
 };
 
 #endif // PLAYLISTREADER_H

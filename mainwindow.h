@@ -41,8 +41,10 @@
 #include "song.h"
 #include "settingswindow.h"
 #include "playlistreader.h"
+#include "fifo_map.hpp"
 
 using namespace std;
+using nlohmann::fifo_map;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -125,7 +127,7 @@ private:
     float volume = 1;
     float prerenderedFft[1024];
 
-    map <QString, vector <Song>> playlists;
+    fifo_map <QString, vector <Song>> playlists;
 
     QString currentPlaylistName;
     vector <Song> playlist;
