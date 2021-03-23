@@ -1,6 +1,8 @@
 #ifndef SONG_H
 #define SONG_H
 
+#include <QString>
+
 #include <iostream>
 #include <windows.h>
 #include <string>

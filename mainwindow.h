@@ -71,6 +71,11 @@ private slots:
     void setActive(QListWidgetItem *);
     void setActive(int index);
 
+    void search (const QString & text);
+
+    void moveSongUp ();
+    void moveSongDown ();
+
     void backward();
     void forward();
     void pause();
@@ -118,6 +123,7 @@ private slots:
 private:
     HSTREAM channel;
 
+    bool isCoverDrawed = false;
     bool paused = true;
     bool repeat = false;
     bool shuffle = false;
@@ -131,7 +137,7 @@ private:
 
     QString currentPlaylistName;
     vector <Song> playlist;
-    vector <Song>::iterator current;
+    int currentID;
 
     QLineEdit * searchSong;
 
@@ -170,6 +176,7 @@ private:
     PlaylistReader * XMLreader;
     settingsWindow * settingsWin = nullptr;
 
+    void searchInPlaylist(const QString & text);
     void drawAllPlaylists();
     void drawPlaylist();
     void setTitle();
