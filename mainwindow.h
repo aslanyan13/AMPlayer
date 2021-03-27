@@ -136,6 +136,7 @@ private:
     fifo_map <QString, vector <Song>> playlists;
 
     QString currentPlaylistName;
+    QString playingSongPlaylist;
     vector <Song> playlist;
     int currentID;
 
@@ -165,6 +166,9 @@ private:
     QPushButton * visualBtn;
     QPushButton * closeBtn;
     QPushButton * minimizeBtn;
+
+    QPushButton * moveSongUpBtn;
+    QPushButton * moveSongDownBtn;
 
     QPoint lastMousePosition;
     bool moving;

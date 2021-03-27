@@ -18,8 +18,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         playlist = playlists[currentPlaylistName];      // Setting current playlist
     }
     else {
-        currentPlaylistName = "Default";      // Settings current playlist name
-        playlist = playlists["Default"];      // Setting current playlist
+        currentPlaylistName = "Default";       // Settings current playlist name
+        playlist = playlists ["Default"];      // Setting current playlist
     }
 
     clearPrerenderedFft();
@@ -95,7 +95,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     pauseBtn->setFont(fontAwesome);
     pauseBtn->setGeometry(380, 285, 50, 50);
     pauseBtn->setStyleSheet("font-size: 36px; border: 0px solid silver; background-color: #141414; color: silver;");
-    pauseBtn->setText("\uf04c"); // f04b - play
+    pauseBtn->setText("\uf04c");
     pauseBtn->setCursor(Qt::PointingHandCursor);
     pauseBtn->show();
 
@@ -271,7 +271,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     removeSongBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
     removeSongBtn->show();
 
-    QPushButton * moveSongUpBtn = new QPushButton (this);
+    moveSongUpBtn = new QPushButton (this);
     moveSongUpBtn->setFont(fontAwesome);
     moveSongUpBtn->setGeometry(75, 570, 20, 20);
     moveSongUpBtn->setText("\uf062");
@@ -279,7 +279,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     moveSongUpBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
     moveSongUpBtn->show();
 
-    QPushButton * moveSongDownBtn = new QPushButton (this);
+    moveSongDownBtn = new QPushButton (this);
     moveSongDownBtn->setFont(fontAwesome);
     moveSongDownBtn->setGeometry(105, 570, 20, 20);
     moveSongDownBtn->setText("\uf063");
@@ -468,6 +468,9 @@ void MainWindow::moveSongUp() {
 
     if (index == 0) return;
 
+    if (index == currentID) currentID--;
+    else if (index - 1 == currentID) currentID++;
+
     swap(playlist[index - 1], playlist[index]);
     playlists[currentPlaylistName] = playlist;
     drawPlaylist();
@@ -480,7 +483,10 @@ void MainWindow::moveSongDown () {
 
     cout << playlistWidget->currentRow() << " " << index << endl;
 
-    if (index == playlist.size() - 1) return;
+    if (index == (int)playlist.size() - 1) return;
+
+    if (index == currentID) currentID++;
+    else if (index + 1 == currentID) currentID--;
 
     swap(playlist[index + 1], playlist[index]);
     playlists[currentPlaylistName] = playlist;
@@ -489,11 +495,14 @@ void MainWindow::moveSongDown () {
 }
 
 void MainWindow::removeFile() {
-    if (playlistWidget->currentRow() == -1 || searchSong->text() != "") return;
+    if (playlistWidget->currentRow() == -1) return;
 
     int index = playlistWidget->currentItem()->data(Qt::UserRole).toInt();
 
-    if (index == currentID)
+    Song temp(playlist[index].path);
+    int globalIndex = std::find(playlists[currentPlaylistName].begin(), playlists[currentPlaylistName].end(), temp) - playlists[currentPlaylistName].begin();
+
+    if (globalIndex == currentID)
     {
         BASS_ChannelStop(channel);
         channel = NULL;
@@ -505,9 +514,10 @@ void MainWindow::removeFile() {
     }
 
     playlist.erase(playlist.begin() + index);
+    playlists[currentPlaylistName].erase(playlists[currentPlaylistName].begin() + globalIndex);
     drawPlaylist();
 
-    if (index == playlist.size()) index--;
+    if (index == (int)playlist.size()) index--;
     playlistWidget->setCurrentRow(index);
 }
 
@@ -558,7 +568,6 @@ bool MainWindow::openFolder () {
     msgBox.exec();
 
     drawPlaylist();
-
     playlists[currentPlaylistName] = playlist;
 
     return true;
@@ -612,7 +621,7 @@ void MainWindow::removePlaylist () {
         bool currentSongInPlaylist = false;
 
         for (auto iter = playlist.begin(); iter != playlist.end(); iter++)
-            if (wcscmp(iter->path, playlist[currentID].path) == 0)
+            if (wcscmp(iter->path, playlist[currentID].path) == 0 && playingSongPlaylist == currentPlaylistName)
                 currentSongInPlaylist = true;
 
         if (currentSongInPlaylist)
@@ -637,6 +646,21 @@ void MainWindow::removePlaylist () {
 }
 void MainWindow::search(const QString & text)
 {
+    if (text == "")
+    {
+        moveSongDownBtn->setCursor(Qt::PointingHandCursor);
+        moveSongUpBtn->setCursor(Qt::PointingHandCursor);
+
+        moveSongDownBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
+        moveSongUpBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
+    } else {
+        moveSongDownBtn->setCursor(Qt::ArrowCursor);
+        moveSongUpBtn->setCursor(Qt::ArrowCursor);
+
+        moveSongDownBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: gray;");
+        moveSongUpBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: gray;");
+    }
+
     cout << text.toStdString() << endl;
     searchInPlaylist(text);
     drawPlaylist();
@@ -685,7 +709,6 @@ void MainWindow::drawPlaylist() {
         QString name = QString::fromStdWString(to_wstring(i + 1) + L". " + playlist[i].getName());
 
         songItem->setData(Qt::UserRole, i);
-        songItem->setData(1, path);
         songItem->setText(name);
 
         playlistWidget->addItem(songItem);
@@ -717,10 +740,11 @@ void MainWindow::setActive (int index) {
     paused = true;
     pauseBtn->setText("\uf04c"); // Set symbol to pause
 
+    playingSongPlaylist = currentPlaylistName;
     currentID = index;
 
     if (channel != NULL)
-        BASS_ChannelStop(channel);
+        BASS_StreamFree(channel);
 
     channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path, 0, 0, 0);
     prerenderFft();
@@ -844,7 +868,7 @@ void MainWindow::updateTime() {
         if (getPosition() >= getDuration())
         {
             if (repeat) {
-                BASS_ChannelStop(channel);
+                BASS_StreamFree(channel);
                 channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path, 0, 0, 0);
                 BASS_ChannelPlay(channel, true);
                 BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
@@ -859,7 +883,7 @@ void MainWindow::updateTime() {
 
                 playlistWidget->setCurrentRow(currentID);
 
-                BASS_ChannelStop(channel);
+                BASS_StreamFree(channel);
                 channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path, 0, 0, 0);
 
                 prerenderFft();
@@ -900,6 +924,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     if (!cover.isNull()) {
         QBrush brush(cover);
         QTransform transform;
+        // transform.fromScale(0.3, 0.3);
         transform.scale(0.3, 0.3);
         transform.translate(85, 200);
         brush.setTransform(transform);
@@ -980,7 +1005,6 @@ void MainWindow::prerenderFft ()
         else if (max > 40) max = 40;
 
         prerenderedFft[(int)k] = max;
-        cout << max << " ";
 
         BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, i), BASS_POS_BYTE);
     }
@@ -992,8 +1016,6 @@ void MainWindow::prerenderFft ()
 void MainWindow::mouseMoveEvent (QMouseEvent * event) {
     float mouseX = event->pos().x();
     float mouseY = event->pos().y();
-
-    // cout << mouseX << " " << mouseY << endl;
 
     if (mouseX > 50 && mouseX < 750 && mouseY > 350 && mouseY < 390) {
         this->setCursor(Qt::PointingHandCursor);
@@ -1136,7 +1158,6 @@ void MainWindow::reloadStyles () {
                         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
 
     QScrollBar *hbar = playlistWidget->horizontalScrollBar();
-    hbar->setStyle( new QCommonStyle );
     hbar->setStyleSheet("QScrollBar:horizontal { outline: 0; border-radius: 20px; border: 0px solid black; height: 5px; background: #141414; }" \
                         "QScrollBar::add-line:horizontal { height: 0; }" \
                         "QScrollBar::sub-line:horizontal { height: 0; }" \
@@ -1145,7 +1166,6 @@ void MainWindow::reloadStyles () {
                         "QScrollBar::add-page:horizontal, QScrollBar::sub-page:vertical { height: 0px; }");
 
     vbar = playlistsWidget->verticalScrollBar();
-    vbar->setStyle( new QCommonStyle );
     vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #141414; }" \
                         "QScrollBar::add-line:vertical { height: 0; }" \
                         "QScrollBar::sub-line:vertical { height: 0; }" \
@@ -1154,7 +1174,6 @@ void MainWindow::reloadStyles () {
                         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
 
     hbar = playlistsWidget->horizontalScrollBar();
-    hbar->setStyle( new QCommonStyle );
     hbar->setStyleSheet("QScrollBar:horizontal { outline: 0; border-radius: 20px; border: 0px solid black; height: 5px; background: #141414; }" \
                         "QScrollBar::add-line:horizontal { height: 0; }" \
                         "QScrollBar::sub-line:horizontal { height: 0; }" \
