@@ -6,18 +6,38 @@ QColor nextColor(255, 37, 79);
 string mainColorStr = "rgb(255, 37, 79)";
 int colorChangeSpeed = 20;
 
+bool isOrderChanged = false;
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    starttime = clock();
+
+    if (logging) {
+        int current = time(NULL);
+
+        logfile.setFileName(QDir::currentPath() + "/logs/log_" + QString::number(current) + ".txt");
+
+        if (!logfile.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            qDebug() << "Can't open log file";
+            logging = false;
+        } else {
+            writeLog ("Program initialized");
+        }
+    }
+
     // Reading playlists from XML file
     XMLreader = new PlaylistReader(QDir::currentPath() + "/XML/playlists.xml");
     XMLreader->readPlaylists(playlists);
 
     if (playlists.size() > 0)
     {
+        writeLog ("Playlists loaded from XML file");
         currentPlaylistName = playlists.begin()->first; // Settings current playlist name
         playlist = playlists[currentPlaylistName];      // Setting current playlist
     }
     else {
+        writeErrorLog ("Can't load/open playlists XML file");
         currentPlaylistName = "Default";       // Settings current playlist name
         playlist = playlists ["Default"];      // Setting current playlist
     }
@@ -89,6 +109,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     if (cover.isNull()) {
         cout << reader.errorString().toStdString() << endl;
+        writeLog ("Can't load cover! " + reader.errorString());
     }
 
     pauseBtn = new QPushButton(this);
@@ -205,7 +226,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                         "QScrollBar::handle:horizontal:hover { border-radius: 20px; height: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
                         "QScrollBar::add-page:horizontal, QScrollBar::sub-page:vertical { height: 0px; }");
 
-    this->playlistWidget->setMouseTracking(true);
+    playlistWidget->setDragDropMode(QAbstractItemView::DragDrop);
+    playlistWidget->setDefaultDropAction(Qt::MoveAction);
+
+    auto playlistModel = playlistWidget->model();
     playlistWidget->setGeometry(15, 400, 570, 160);
     playlistWidget->lower();
     playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
@@ -270,22 +294,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     removeSongBtn->setCursor(Qt::PointingHandCursor);
     removeSongBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
     removeSongBtn->show();
-
-    moveSongUpBtn = new QPushButton (this);
-    moveSongUpBtn->setFont(fontAwesome);
-    moveSongUpBtn->setGeometry(75, 570, 20, 20);
-    moveSongUpBtn->setText("\uf062");
-    moveSongUpBtn->setCursor(Qt::PointingHandCursor);
-    moveSongUpBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
-    moveSongUpBtn->show();
-
-    moveSongDownBtn = new QPushButton (this);
-    moveSongDownBtn->setFont(fontAwesome);
-    moveSongDownBtn->setGeometry(105, 570, 20, 20);
-    moveSongDownBtn->setText("\uf063");
-    moveSongDownBtn->setCursor(Qt::PointingHandCursor);
-    moveSongDownBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
-    moveSongDownBtn->show();
 
     searchSong = new QLineEdit(this);
     searchSong->setStyleSheet("QLineEdit { padding: 0px 5px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid silver; background-color: #181818; color: silver; }" \
@@ -366,10 +374,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (addSongAct, SIGNAL(triggered()), this, SLOT(openFile()));
     connect (addFolderAct, SIGNAL(triggered()), this, SLOT(openFolder()));
 
-    connect (moveSongUpBtn, SIGNAL (clicked()), this, SLOT(moveSongUp()));
-    connect (moveSongDownBtn, SIGNAL (clicked()), this, SLOT(moveSongDown()));
-
     connect (playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
+    connect (playlistWidget->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)), this, SLOT(rowsMoved(QModelIndex, int, int, QModelIndex, int)));
+
     connect (playlistsWidget, SIGNAL(itemClicked(QListWidgetItem *)), this, SLOT(changeCurrentPlaylist(QListWidgetItem *)));
 
     connect (menuBtn, SIGNAL(clicked()), this, SLOT(settings()));
@@ -399,8 +406,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     drawAllPlaylists();
 }
 
+
 MainWindow::~MainWindow()
 {
+    QString uptime = QString::fromStdString(seconds2string((clock() - starttime) / 1000));
+    writeLog("Exiting...");
+    writeLog("Uptime: " + uptime + " (" + QString::number(clock() - starttime) + "ms)");
+
+    logfile.close();
+
     playlists[currentPlaylistName] = playlist;
     XMLreader->writePlaylists(playlists);
     delete ui;
@@ -409,95 +423,73 @@ bool MainWindow::openFile ()
 {
     searchSong->setText("");
 
-    HWND win = NULL;
-    wchar_t file[MAX_PATH] = L"";
+    QFileDialog dialog(this);
+    dialog.setDirectory(QDir::homePath());
+    dialog.setFileMode(QFileDialog::ExistingFiles);
+    dialog.setNameFilter(trUtf8("Audio files (*.mo3 *.mp3 *.mp2 *.mp1 *.ogg *.aif *.wav)"));
+    QStringList fileNames;
 
-    OPENFILENAME ofn = { 0 };
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = win;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrFile = file;
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_EXPLORER;
-    ofn.lpstrTitle = L"Select a file to play";
-    ofn.lpstrFilter = L"Audio Files\0*.mo3;*.xm;*.mod;*.s3m;*.it;*.mtm;*.umx;*.mp3;*.mp2;*.mp1;*.ogg;*.wav;*.aif)\0All files\0*.*\0\0";
+    if (dialog.exec())
+        fileNames = dialog.selectedFiles();
 
-    if (!GetOpenFileName(&ofn)) return false;
-    else {
-        // Changing file format to Qt format
-        for (int i = 0; i < MAX_PATH; i++)
-        {
-            if  (file[i] == L'\\') file[i] = L'/';
-        }
+    for (int i = 0; i < fileNames.length(); i++)
+    {
+        qDebug() << fileNames[i];
+        Song temp(fileNames[i]);
 
-        Song temp(file);
+        writeLog("Opened file: " + fileNames[i]);
 
-        // Checking if file already exist
         if (count(playlist.begin(), playlist.end(), temp) != 0)
         {
-            QMessageBox msgBox;
-            msgBox.setWindowTitle("Add file");
-            msgBox.setText("File already exists in playlist!");
-            msgBox.setStyleSheet("background-color: #141414; color: silver;");
-            msgBox.exec();
-            return true;
+            continue;
         }
 
-        temp.setName(file);
         temp.setNameFromPath();
-        wcout << temp.path << endl;
-
         playlist.push_back(temp);
-        cout << playlist.size() << endl;
-
-        drawPlaylist();
-        if (playlist.size() == 1)
-            setActive (0);
     }
 
-    playlists[currentPlaylistName] = playlist;
+    // "Audio Files\0*.mo3;*.xm;*.mod;*.s3m;*.it;*.mtm;*.umx;*.mp3;*.mp2;*.mp1;*.ogg;*.wav;*.aif)\0All files\0*.*\0\0";
+
+    drawPlaylist();
+    if (playlist.size() == 1)
+        setActive (0);
+
+     playlists[currentPlaylistName] = playlist;
 
     return true;
 }
+void MainWindow::reorderPlaylist () {
+    vector <Song> neworder;
 
-void MainWindow::moveSongUp() {
-    if (playlistWidget->currentRow() == -1 || searchSong->text() != "") return;
+    for (int i = 0; i < playlist.size(); i++)
+    {
+        int index = playlistWidget->item(i)->data(Qt::UserRole).toInt();
+        neworder.push_back (playlist[index]);
+    }
 
-    int index = playlistWidget->currentItem()->data(Qt::UserRole).toInt();
+    if (channel != NULL)
+    {
+        QString currentPath = playlist[currentID].path;
+        Song temp(currentPath);
+        currentID = std::find(neworder.begin(), neworder.end(), temp) - neworder.begin();
+    }
 
-    cout << playlistWidget->currentRow() << " " << index << endl;
-
-    if (index == 0) return;
-
-    if (index == currentID) currentID--;
-    else if (index - 1 == currentID) currentID++;
-
-    swap(playlist[index - 1], playlist[index]);
+    playlist = neworder;
     playlists[currentPlaylistName] = playlist;
+
     drawPlaylist();
-    playlistWidget->setCurrentRow(index - 1);
 }
-void MainWindow::moveSongDown () {
-    if (playlistWidget->currentRow() == -1 || searchSong->text() != "") return;
-
-    int index = playlistWidget->currentItem()->data(Qt::UserRole).toInt();
-
-    cout << playlistWidget->currentRow() << " " << index << endl;
-
-    if (index == (int)playlist.size() - 1) return;
-
-    if (index == currentID) currentID++;
-    else if (index + 1 == currentID) currentID--;
-
-    swap(playlist[index + 1], playlist[index]);
-    playlists[currentPlaylistName] = playlist;
-    drawPlaylist();
-    playlistWidget->setCurrentRow(index + 1);
+void MainWindow::rowsMoved(QModelIndex, int, int, QModelIndex, int) {
+    qDebug() << "moved";
+    reorderPlaylist();
 }
 
 void MainWindow::removeFile() {
     if (playlistWidget->currentRow() == -1) return;
 
     int index = playlistWidget->currentItem()->data(Qt::UserRole).toInt();
+
+    writeLog(playlistWidget->currentItem()->text() + " removed from " + currentPlaylistName);
 
     Song temp(playlist[index].path);
     int globalIndex = std::find(playlists[currentPlaylistName].begin(), playlists[currentPlaylistName].end(), temp) - playlists[currentPlaylistName].begin();
@@ -526,27 +518,29 @@ bool MainWindow::openFolder () {
 
     QString folder = QFileDialog::getExistingDirectory(0, ("Select Folder with Songs"), QDir::homePath());
 
-    if (folder.toStdString() == "")
+    if (folder == "")
         return false;
 
     QDir directory(folder);
-    QStringList musicFiles = directory.entryList(QStringList() << "*.mp3" << "*.mo3" << "*.wav" << "*.mp2" << "*.mp1",QDir::Files|QDir::Readable);
+    QStringList musicFiles = directory.entryList(QStringList() << "*.mp3" << "*.mo3" << "*.wav" << "*.mp2" << "*.mp1", QDir::Files | QDir::Readable);
+
+    writeLog("Folder opened: " + folder);
+    writeLog("Folder contains: " + QString::number (musicFiles.length()) + " files");
 
     int duplicatesCount = 0;
     for (int i = 0; i < musicFiles.length(); i++)
     {
-        wchar_t tmp[MAX_PATH];
         QString fullpath = folder + "/" + musicFiles[i];
-        wcscpy(tmp, fullpath.toStdWString().c_str());
 
-        Song temp(tmp);
+        Song temp(fullpath);
+
+        writeLog("Opened file: " + fullpath);
 
         if (count(playlist.begin(), playlist.end(), temp) != 0)
         {
             duplicatesCount++;
             continue;
         }
-        temp.setName(musicFiles[i].toStdWString());
         temp.setNameFromPath();
         playlist.push_back(temp);
     }
@@ -589,6 +583,7 @@ void MainWindow::createPlaylist ()
                 msgBox.setStyleSheet("background-color: #141414; color: silver;");
                 msgBox.exec();
             } else {
+                writeLog("New playlist created: " + name);
                 playlists[name] = vector <Song>();
                 break;
             }
@@ -621,7 +616,7 @@ void MainWindow::removePlaylist () {
         bool currentSongInPlaylist = false;
 
         for (auto iter = playlist.begin(); iter != playlist.end(); iter++)
-            if (wcscmp(iter->path, playlist[currentID].path) == 0 && playingSongPlaylist == currentPlaylistName)
+            if (iter->path == playlist[currentID].path && playingSongPlaylist == currentPlaylistName)
                 currentSongInPlaylist = true;
 
         if (currentSongInPlaylist)
@@ -637,6 +632,8 @@ void MainWindow::removePlaylist () {
     }
 
     // Deleting playlist and setting first playlist as current
+    writeLog("Removed playlist: " + playlistName);
+
     playlists.erase(playlistName);
     currentPlaylistName = "Default";
     playlist = playlists[currentPlaylistName];
@@ -646,22 +643,9 @@ void MainWindow::removePlaylist () {
 }
 void MainWindow::search(const QString & text)
 {
-    if (text == "")
-    {
-        moveSongDownBtn->setCursor(Qt::PointingHandCursor);
-        moveSongUpBtn->setCursor(Qt::PointingHandCursor);
-
-        moveSongDownBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
-        moveSongUpBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
-    } else {
-        moveSongDownBtn->setCursor(Qt::ArrowCursor);
-        moveSongUpBtn->setCursor(Qt::ArrowCursor);
-
-        moveSongDownBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: gray;");
-        moveSongUpBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: gray;");
-    }
-
     cout << text.toStdString() << endl;
+    writeLog("Searching query: " + text);
+
     searchInPlaylist(text);
     drawPlaylist();
 }
@@ -684,16 +668,20 @@ void MainWindow::drawAllPlaylists ()
     }
 }
 void MainWindow::searchInPlaylist(const QString & text) {
+    if (text != "")
+        playlistWidget->setDragDropMode(QAbstractItemView::NoDragDrop);
+    else
+        playlistWidget->setDragDropMode(QAbstractItemView::DragDrop);
+
     playlist = playlists[currentPlaylistName];
 
     for (int i = 0; i < (int)playlist.size(); i++) {
-        wstring name = playlist[i].getName();
-        wstring query = text.toStdWString();
+        QString name = playlist[i].getName();
+        name = name.toLower();
 
-        transform(name.begin(), name.end(), name.begin(), ::tolower);
-        transform(query.begin(), query.end(), query.begin(), ::tolower);
+        QString query = text.toLower();
 
-        if (name.find(query) == wstring::npos) {
+        if (name.indexOf(query) == -1) {
             playlist.erase(playlist.begin() + i);
             i--;
         }
@@ -705,27 +693,30 @@ void MainWindow::drawPlaylist() {
     for (int i = 0; i < (int)playlist.size(); i++)
     {
         QListWidgetItem *  songItem = new QListWidgetItem(playlistWidget);
-        QString path = QString::fromStdWString(wstring(playlist[i].path));
-        QString name = QString::fromStdWString(to_wstring(i + 1) + L". " + playlist[i].getName());
+        QString path = playlist[i].path;
+        QString name = playlist[i].getName();
 
         songItem->setData(Qt::UserRole, i);
-        songItem->setText(name);
+        songItem->setText(QString::number(i + 1) + ". " + name);
 
         playlistWidget->addItem(songItem);
    }
 }
 void MainWindow::setTitle () {
-    wstring name = playlist[currentID].getName();
-    if (name.length() > 32)
-        name = name.substr(0, 32) + L"...";
+    QString name = playlist[currentID].getName();
 
-    songTitle->setText(QString::fromStdWString(name));
+    if (name.length() > 32)
+        name = name.mid(0, 32) + "...";
+
+    songTitle->setText(name);
 }
 void MainWindow::changeCurrentPlaylist (QListWidgetItem * item) {    
     searchSong->setText("");
     playlists[currentPlaylistName] = playlist;
 
     cout << item->text().toStdString() << endl;
+
+    writeLog("\nPlaylist changed to: " + item->text());
 
     playlist = playlists[item->text()];
     currentPlaylistName = item->text();
@@ -734,7 +725,7 @@ void MainWindow::changeCurrentPlaylist (QListWidgetItem * item) {
     drawAllPlaylists();
 }
 void MainWindow::setActive(QListWidgetItem * item) {
-    setActive (item->data(Qt::UserRole).toInt());
+    setActive (playlistWidget->currentRow());
 }
 void MainWindow::setActive (int index) {
     paused = true;
@@ -746,7 +737,7 @@ void MainWindow::setActive (int index) {
     if (channel != NULL)
         BASS_StreamFree(channel);
 
-    channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path, 0, 0, 0);
+    channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path.toStdWString().c_str(), 0, 0, 0);
     prerenderFft();
 
     BASS_ChannelPlay(channel, false);
@@ -758,12 +749,15 @@ void MainWindow::setActive (int index) {
     songDuration->setText(len);
 
     playlistWidget->setCurrentRow(index);
+    writeLog("Song changed to: " + playlistWidget->currentItem()->text());
 
     setTitle();
 }
 void MainWindow::forward () {
     if (channel == NULL || playlist.size() == 1)
         return;
+
+    writeLog("Forward button pressed");
 
     if (shuffle) {
         int songID;
@@ -782,6 +776,8 @@ void MainWindow::forward () {
 void MainWindow::backward () {
     if (channel == NULL || playlist.size() == 1)
         return;
+
+    writeLog("Backward button pressed");
 
     if (shuffle) {
         int songID;
@@ -804,18 +800,20 @@ void MainWindow::pause ()
     paused = !paused;
 
     if (paused) {
+        writeLog("Song resumed");
         BASS_ChannelPlay(channel, false);
         pauseBtn->setText("\uf04c"); // Set symbol to pause
     }
     else {
+        writeLog("Song paused");
         BASS_ChannelPause(channel);
         pauseBtn->setText("\uf04b"); // Set symbol to play
     }
 }
 void MainWindow::changeVolume (int vol)
 {
-    cout << vol << endl;
     volume = vol / 100.0f;
+    writeLog("Volume changed to: " + QString::number(vol));
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 }
 void MainWindow::changeRepeat () {
@@ -824,8 +822,15 @@ void MainWindow::changeRepeat () {
 
     repeat = !repeat;
 
-    if (repeat) repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
-    else repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+
+    if (repeat) {
+        writeLog("Repeat enabled");
+        repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
+    }
+    else {
+        writeLog("Repeat disabled");
+        repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    }
 }
 void MainWindow::changeShuffle () {
     if (repeat == true)
@@ -833,8 +838,14 @@ void MainWindow::changeShuffle () {
 
     shuffle = !shuffle;
 
-    if (shuffle) shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
-    else shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    if (shuffle) {
+        writeLog("Shuffle enabled");
+        shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr.c_str()) + ";");
+    }
+    else {
+        writeLog("Shuffle disabled");
+        shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #141414; color: silver;");
+    }
 }
 
 string MainWindow::seconds2string (float seconds) {
@@ -861,15 +872,24 @@ string MainWindow::seconds2string (float seconds) {
 }
 
 void MainWindow::updateTime() {
+    if (isOrderChanged)
+    {
+        reorderPlaylist();
+        isOrderChanged = false;
+    }
+
     if (channel != NULL) {
         QString pos = QString::fromStdString(seconds2string(getPosition()));
         songPosition->setText(pos);
 
         if (getPosition() >= getDuration())
         {
+            writeLog("Song ended");
+
             if (repeat) {
+                writeLog("Song restarted");
                 BASS_StreamFree(channel);
-                channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path, 0, 0, 0);
+                channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path.toStdWString().c_str(), 0, 0, 0);
                 BASS_ChannelPlay(channel, true);
                 BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
             }
@@ -884,7 +904,7 @@ void MainWindow::updateTime() {
                 playlistWidget->setCurrentRow(currentID);
 
                 BASS_StreamFree(channel);
-                channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path, 0, 0, 0);
+                channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path.toStdWString().c_str(), 0, 0, 0);
 
                 prerenderFft();
 
@@ -898,6 +918,7 @@ void MainWindow::updateTime() {
 
                 setTitle();
             } else {
+                writeLog("Changing to next song");
                 forward();
             }
         }
@@ -977,8 +998,10 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 }
 
 void MainWindow::prerenderFft ()
-{
+{   
     if (channel == NULL) return;
+
+    writeLog("Prerendering fft...");
 
     int k = 0;
     float time = getDuration();
@@ -1011,6 +1034,8 @@ void MainWindow::prerenderFft ()
 
     BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, 0), BASS_POS_BYTE);
     changeVolume(vol * 100);
+
+    writeLog("Prerendering fft ended");
 }
 
 void MainWindow::mouseMoveEvent (QMouseEvent * event) {
@@ -1062,11 +1087,14 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
                 BASS_ChannelStop(channel);
                 BASS_ChannelPlay(channel, true);
             }
-            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, ((mouseX - 50) / (700.0f)) * getDuration()), BASS_POS_BYTE);
+            double newtime = ((mouseX - 50) / (700.0f)) * getDuration();
 
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, newtime), BASS_POS_BYTE);
+            writeLog("Song position changed to: " + QString::fromStdString(seconds2string(newtime)) + " (" + QString::number(newtime) + "s)");
         }
         else if (event->button() == Qt::RightButton) {
             liveSpec = !liveSpec;
+            writeLog((liveSpec) ? "Live spectrum enabled" : "Live spectrum disabled");
         }
     }
 

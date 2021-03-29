@@ -34,10 +34,7 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
 
                 if (xmlReader.name() == "song" && attribute_value != "")
                 {
-                    wchar_t path[MAX_PATH] = L"";
-                    xmlReader.readElementText().toWCharArray(path);
-
-                    Song temp(path);
+                    Song temp(xmlReader.readElementText());
                     temp.setNameFromPath();
 
                     playlists[attribute_value].push_back(temp);
@@ -71,7 +68,7 @@ void PlaylistReader::writePlaylists(fifo_map<QString, vector<Song>> playlists)
             for (int i = 0; i < playlist.second.size(); i++)
             {
                 xmlWriter.writeStartElement("song");
-                xmlWriter.writeCharacters(QString::fromStdWString(wstring(playlist.second[i].path)));
+                xmlWriter.writeCharacters(playlist.second[i].path);
                 xmlWriter.writeEndElement();
             }
 

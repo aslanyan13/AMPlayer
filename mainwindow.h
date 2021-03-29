@@ -55,7 +55,9 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
+    void reorderPlaylist();
     void reloadStyles();
+
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
@@ -72,9 +74,6 @@ private slots:
     void setActive(int index);
 
     void search (const QString & text);
-
-    void moveSongUp ();
-    void moveSongDown ();
 
     void backward();
     void forward();
@@ -120,25 +119,31 @@ private slots:
     void slot_minimize() { setWindowState(Qt::WindowMinimized); };
     void slot_close() { this->close(); };
 
+    void rowsMoved(QModelIndex, int, int, QModelIndex, int);
+
 private:
     HSTREAM channel;
 
-    bool isCoverDrawed = false;
     bool paused = true;
     bool repeat = false;
     bool shuffle = false;
     bool liveSpec = false;
     bool colorChanging = false;
+    bool logging = true;
+
+    float starttime;
 
     float volume = 1;
     float prerenderedFft[1024];
 
     fifo_map <QString, vector <Song>> playlists;
 
+    QFile logfile;
+
     QString currentPlaylistName;
     QString playingSongPlaylist;
     vector <Song> playlist;
-    int currentID;
+    int currentID = -1;
 
     QLineEdit * searchSong;
 
@@ -166,9 +171,6 @@ private:
     QPushButton * visualBtn;
     QPushButton * closeBtn;
     QPushButton * minimizeBtn;
-
-    QPushButton * moveSongUpBtn;
-    QPushButton * moveSongDownBtn;
 
     QPoint lastMousePosition;
     bool moving;
@@ -209,5 +211,31 @@ private:
         return BASS_ChannelBytes2Seconds(channel, pos);
     }
 
+    void writeLog (QString text)
+    {
+        if (!logging) return;
+
+        QTextStream out(&logfile);
+        QDateTime now = QDateTime::currentDateTime();
+
+        QString name = qgetenv("USER");
+        if (name.isEmpty())
+            name = qgetenv("USERNAME");
+
+        out << name << " [" << now.toString("hh:mm:ss") << "]: " << text << "\n";
+    }
+    void writeErrorLog (QString text)
+    {
+        if (!logging) return;
+
+        QTextStream out(&logfile);
+        QDateTime now = QDateTime::currentDateTime();
+
+        QString name = qgetenv("USER");
+        if (name.isEmpty())
+            name = qgetenv("USERNAME");
+
+        out << "ERROR! " <<  name << " [" << now.toString("hh:mm:ss") << "]: " << text << "\n";
+    }
 };
 #endif // MAINWINDOW_H

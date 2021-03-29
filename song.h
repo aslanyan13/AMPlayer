@@ -12,42 +12,29 @@ using namespace std;
 class Song
 {
 private:
-    wstring name = L"";
-    wstring artist = L"";
-    float duration = 0.0f;
+    QString name = "";
 public:
-    wchar_t path[MAX_PATH] = L"";
+    QString path = "";
 
     Song();
-    Song(wchar_t p[MAX_PATH]) {
-        for (int i = 0; i < MAX_PATH; i++)
-            path[i] = p[i];
-    };
+    Song(QString p) : path(p) {};
 
-    void setName (wstring n) {
+    void setName (QString n) {
         this->name = n;
     }
     void setNameFromPath () {
-        wstring temp (path);
-        int left = temp.find_last_of(L'\\');
-        if (left == string::npos)
-            left = temp.find_last_of(L'/');
+        int left = path.lastIndexOf('/');
+        name = path.mid(left + 1);
 
-        name = temp.substr (left + 1);
-
-        int right = name.find_last_of(L'.', temp.length() - 1);
-        name = name.substr(0, right);
-    }
-    void setPath (wchar_t p[MAX_PATH]) {
-        for (int i = 0; i < MAX_PATH; i++)
-            path[i] = p[i];
+        int right = name.lastIndexOf('.');
+        name = name.mid(0, right);
     }
 
-    wstring getName () {
+    QString getName () {
         return name;
     }
     bool operator==(const Song right) {
-        if (wcscmp(this->path, right.path) == 0) return true;
+        if (this->path == right.path) return true;
         return false;
     }
 };
