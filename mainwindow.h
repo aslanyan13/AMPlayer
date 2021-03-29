@@ -67,9 +67,9 @@ private slots:
     bool openFolder ();
 
     void createPlaylist();
-    void removePlaylist();
+    void removePlaylist(int index);
 
-    void changeCurrentPlaylist (QListWidgetItem *);
+    void changeCurrentPlaylist (int index);
     void setActive(QListWidgetItem *);
     void setActive(int index);
 
@@ -149,8 +149,8 @@ private:
 
     QWidget * titlebarWidget;
 
-    QListWidget * playlistsWidget;
     QListWidget * playlistWidget;
+    QTabBar * playlistsBar;
 
     QLabel * songTitle;
     QLabel * songDuration;

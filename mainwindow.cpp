@@ -192,7 +192,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songTitle->show();
 
     QLabel * songInfo = new QLabel(this);
-    songInfo->setText("Genre, 44.1k MP3");
+    // songInfo->setText("Genre, 44.1k MP3");
+    songInfo->setText("");
     songInfo->setGeometry(200, 255, 400, 16);
     songInfo->setAlignment(Qt::AlignCenter);
     songInfo->setStyleSheet("/* border: 1px solid silver; */ background-color: #141414; color: gray;");
@@ -205,6 +206,26 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     timecode->setMouseTracking(true);
     timecode->installEventFilter(this);
     timecode->setStyleSheet("font-size: 10px; border: 1px solid silver; background-color: #141414; color: silver;");
+
+    playlistsBar = new QTabBar(this);
+    playlistsBar->setDocumentMode(true);
+    playlistsBar->setFont(fontAwesome);
+    playlistsBar->setTabsClosable(true);
+    playlistsBar->setDrawBase(false);
+    playlistsBar->setExpanding (false);
+    playlistsBar->setMouseTracking(true);
+    playlistsBar->setGeometry(15, 395, 755, 25);
+    playlistsBar->lower();
+    playlistsBar->setStyleSheet("QTabBar { height: 25px; font-size: 12px; border: 0px solid silver; background-color: #141414; color: silver; }" \
+                                "QTabBar::tab:selected { color: " + QString::fromStdString(mainColorStr) + ";}" \
+                                "QTabBar::tab:last { border-right: 0px solid #141414; } " \
+                                "QTabBar::scroller { width: 40px; }" \
+                                "QTabBar::close-button { padding: 3px; image: url(images/close.png); }" \
+                                "QTabBar QToolButton { border: 0px solid black; color: silver; background-color: #141414; }" \
+                                "QTabBar::tab { height: 25px; padding: 0px 20px; min-width: 80px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #141414; background-color: #181818; color: silver; }" \
+                                "QTabBar::tear { border: 0px solid black; }");
+
+    playlistsBar->show();
 
     playlistWidget = new QListWidget (this);
 
@@ -229,44 +250,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     playlistWidget->setDragDropMode(QAbstractItemView::DragDrop);
     playlistWidget->setDefaultDropAction(Qt::MoveAction);
 
-    auto playlistModel = playlistWidget->model();
-    playlistWidget->setGeometry(15, 400, 570, 160);
+
+    playlistWidget->setGeometry(15, 420, 775, 160);
     playlistWidget->lower();
-    playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
+    playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; padding-left: 15px; font-size: 14px; /*border: 1px solid silver;*/ border-radius: 5px; border-top-left-radius: 0px; background-color: #181818; color: silver; }" \
                                   "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
                                   "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
+
     playlistWidget->show();
-
-    playlistsWidget = new QListWidget (this);
-    playlistsWidget->setGeometry (600, 400, 185, 160);
-    playlistsWidget->lower();
-    playlistsWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
-                                  "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
-                                  "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
-
-    vbar = playlistsWidget->verticalScrollBar();
-    vbar->setStyle( new QCommonStyle );
-    vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #141414; }" \
-                        "QScrollBar::add-line:vertical { height: 0; }" \
-                        "QScrollBar::sub-line:vertical { height: 0; }" \
-                        "QScrollBar::handle:vertical { border-radius: 20px; width: 5px; background: gray; }" \
-                        "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
-                        "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
-
-    hbar = playlistsWidget->horizontalScrollBar();
-    hbar->setStyle( new QCommonStyle );
-    hbar->setStyleSheet("QScrollBar:horizontal { outline: 0; border-radius: 20px; border: 0px solid black; height: 5px; background: #141414; }" \
-                        "QScrollBar::add-line:horizontal { height: 0; }" \
-                        "QScrollBar::sub-line:horizontal { height: 0; }" \
-                        "QScrollBar::handle:horizontal { border-radius: 20px; height: 5px; background: gray; }" \
-                        "QScrollBar::handle:horizontal:hover { border-radius: 20px; height: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
-                        "QScrollBar::add-page:horizontal, QScrollBar::sub-page:vertical { height: 0px; }");
-
-    playlistsWidget->show();
 
     QPushButton * addSongBtn = new QPushButton (this);
     addSongBtn->setFont(fontAwesome);
-    addSongBtn->setGeometry(15, 570, 20, 20);
+    addSongBtn->setGeometry(15, 590, 20, 20);
     addSongBtn->setText("\uf067");
     addSongBtn->setCursor(Qt::PointingHandCursor);
     addSongBtn->setStyleSheet("/*border-radius: 5px;*/ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
@@ -274,7 +269,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     QMenu * songAddingMenu = new QMenu(this);
     songAddingMenu->setFont(fontAwesome);
-    songAddingMenu->setGeometry(15, 530, 120, 40);
+    songAddingMenu->setGeometry(15, 550, 120, 40);
     songAddingMenu->setStyleSheet("/*border-radius: 5px;*/ font-size: 12px; border: 0px solid silver; background-color: #141414; color: silver;");
 
     QAction * addSongAct = new QAction(songAddingMenu);
@@ -289,7 +284,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     QPushButton * removeSongBtn = new QPushButton (this);
     removeSongBtn->setFont(fontAwesome);
-    removeSongBtn->setGeometry(45, 570, 20, 20);
+    removeSongBtn->setGeometry(45, 590, 20, 20);
     removeSongBtn->setText("\uf068");
     removeSongBtn->setCursor(Qt::PointingHandCursor);
     removeSongBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
@@ -298,25 +293,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     searchSong = new QLineEdit(this);
     searchSong->setStyleSheet("QLineEdit { padding: 0px 5px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid silver; background-color: #181818; color: silver; }" \
                               "QLineEdit:focus { border-bottom: 1px solid " + QString::fromStdString(mainColorStr) + "; }");
-    searchSong->setGeometry(335, 570, 250, 20);
+    searchSong->setGeometry(540, 590, 250, 20);
     searchSong->setPlaceholderText("Search song");
     searchSong->show();
 
     QPushButton * createPlaylistBtn = new QPushButton(this);
     createPlaylistBtn->setFont(fontAwesome);
-    createPlaylistBtn->setGeometry(600, 570, 20, 20);
+    createPlaylistBtn->setGeometry(771, 394, 20, 25);
     createPlaylistBtn->setText("\uf067");
     createPlaylistBtn->setCursor(Qt::PointingHandCursor);
     createPlaylistBtn->setStyleSheet("/*border-radius: 5px;*/ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
     createPlaylistBtn->show();
-
-    QPushButton * removePlaylistBtn = new QPushButton (this);
-    removePlaylistBtn->setFont(fontAwesome);
-    removePlaylistBtn->setGeometry(630, 570, 20, 20);
-    removePlaylistBtn->setText("\uf068");
-    removePlaylistBtn->setCursor(Qt::PointingHandCursor);
-    removePlaylistBtn->setStyleSheet("/*border-radius: 5px; */ font-size: 14px; border: 0px solid silver; background-color: #141414; color: silver;");
-    removePlaylistBtn->show();
 
     songPosition = new QLabel(this);
     songPosition->setMouseTracking(true);
@@ -369,21 +356,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (searchSong, SIGNAL(textChanged(const QString &)), this, SLOT(search(const QString &)));
 
     connect (addSongBtn, &QPushButton::clicked, [=](){
-        songAddingMenu->popup(this->mapToGlobal(QPoint(15, 530)));
+        songAddingMenu->popup(this->mapToGlobal(QPoint(15, 540)));
     });
     connect (addSongAct, SIGNAL(triggered()), this, SLOT(openFile()));
     connect (addFolderAct, SIGNAL(triggered()), this, SLOT(openFolder()));
 
+    connect (playlistsBar, SIGNAL (tabBarClicked(int)), this, SLOT(changeCurrentPlaylist (int)));
+    connect (playlistsBar, SIGNAL(tabCloseRequested(int)), this, SLOT(removePlaylist (int)));
+
     connect (playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
     connect (playlistWidget->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)), this, SLOT(rowsMoved(QModelIndex, int, int, QModelIndex, int)));
-
-    connect (playlistsWidget, SIGNAL(itemClicked(QListWidgetItem *)), this, SLOT(changeCurrentPlaylist(QListWidgetItem *)));
 
     connect (menuBtn, SIGNAL(clicked()), this, SLOT(settings()));
 
     connect (removeSongBtn, SIGNAL(clicked()), this, SLOT(removeFile()));
     connect (createPlaylistBtn, SIGNAL(clicked()), this, SLOT(createPlaylist()));
-    connect (removePlaylistBtn, SIGNAL(clicked()), this, SLOT(removePlaylist()));
 
     connect (minimizeBtn, SIGNAL(clicked()), this, SLOT(slot_minimize()));
     connect (closeBtn, SIGNAL(clicked()), this, SLOT(slot_close()));
@@ -405,7 +392,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     drawPlaylist();
     drawAllPlaylists();
 }
-
 
 MainWindow::~MainWindow()
 {
@@ -595,10 +581,8 @@ void MainWindow::createPlaylist ()
     drawAllPlaylists();
 }
 
-void MainWindow::removePlaylist () {
-    QString playlistName = playlistsWidget->currentItem()->text();
-
-    if (playlistName == "Default") return;
+void MainWindow::removePlaylist (int index) {
+    QString playlistName = playlistsBar->tabText(index);
 
     if (playlists[playlistName].size() > 0) {
         QMessageBox msgBox;
@@ -635,6 +619,9 @@ void MainWindow::removePlaylist () {
     writeLog("Removed playlist: " + playlistName);
 
     playlists.erase(playlistName);
+
+    if (playlistName == "Default") playlists["Default"] = vector<Song>();
+
     currentPlaylistName = "Default";
     playlist = playlists[currentPlaylistName];
 
@@ -651,20 +638,19 @@ void MainWindow::search(const QString & text)
 }
 void MainWindow::drawAllPlaylists ()
 {
-    playlistsWidget->clear();
-
     int i = 0;
+    while (playlistsBar->count() != 0)
+    {
+        playlistsBar->removeTab(i);
+        i++;
+
+        if (i >= playlistsBar->count())
+            i = 0;
+    }
+
     for (auto &playlist : playlists)
     {
-        QListWidgetItem *  playlistItem = new QListWidgetItem(playlistsWidget);
-
-        playlistItem->setText(playlist.first);
-        playlistsWidget->addItem(playlistItem);
-
-        if (playlist.first == currentPlaylistName)
-            playlistsWidget->setCurrentRow(i);
-
-        i++;
+        playlistsBar->addTab(playlist.first);
     }
 }
 void MainWindow::searchInPlaylist(const QString & text) {
@@ -710,16 +696,16 @@ void MainWindow::setTitle () {
 
     songTitle->setText(name);
 }
-void MainWindow::changeCurrentPlaylist (QListWidgetItem * item) {    
+void MainWindow::changeCurrentPlaylist (int index) {
     searchSong->setText("");
     playlists[currentPlaylistName] = playlist;
 
-    cout << item->text().toStdString() << endl;
+    playlistsBar->tabText(index);
 
-    writeLog("\nPlaylist changed to: " + item->text());
+    writeLog("\nPlaylist changed to: " + playlistsBar->tabText(index));
 
-    playlist = playlists[item->text()];
-    currentPlaylistName = item->text();
+    playlist = playlists[playlistsBar->tabText(index)];
+    currentPlaylistName = playlistsBar->tabText(index);
 
     drawPlaylist();
     drawAllPlaylists();
@@ -1056,16 +1042,19 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
         timecode->hide();
     }
 
-    if (mouseX >= 15 && mouseX <= 575 && mouseY >= 400 && mouseY <= 560)
+    if (mouseX >= 15 && mouseX <= 770 && mouseY >= 395 && mouseY <= 420)
+    {
+        playlistsBar->raise();
+    } else {
+        playlistsBar->lower();
+    }
+
+    if (mouseX >= 15 && mouseX <= 790 && mouseY >= 420 && mouseY <= 580)
     {
         playlistWidget->raise();
     }
-    else if (mouseX >= 600 && mouseX <= 785 && mouseY >= 400 && mouseY <= 560)
-    {
-        playlistsWidget->raise();
-    } else {
+    else {
         playlistWidget->lower();
-        playlistsWidget->lower();
     }
 
     if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
@@ -1168,14 +1157,9 @@ void MainWindow::reloadStyles () {
                                     "background: silver; " \
                                 "}");
 
-    playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
+    playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; padding-left: 15px; font-size: 14px; /*border: 1px solid silver;*/ border-radius: 5px; border-top-left-radius: 0px; background-color: #181818; color: silver; }" \
                                   "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
                                   "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
-
-    playlistsWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; font-size: 14px; /*border: 1px solid silver; */ border-radius: 5px; background-color: #181818; color: silver; }" \
-                                   "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
-                                   "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
-
 
     QScrollBar *vbar = playlistWidget->verticalScrollBar();
     vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #141414; }" \
@@ -1193,21 +1177,14 @@ void MainWindow::reloadStyles () {
                         "QScrollBar::handle:horizontal:hover { border-radius: 20px; height: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
                         "QScrollBar::add-page:horizontal, QScrollBar::sub-page:vertical { height: 0px; }");
 
-    vbar = playlistsWidget->verticalScrollBar();
-    vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #141414; }" \
-                        "QScrollBar::add-line:vertical { height: 0; }" \
-                        "QScrollBar::sub-line:vertical { height: 0; }" \
-                        "QScrollBar::handle:vertical { border-radius: 20px; width: 5px; background: gray; }" \
-                        "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
-                        "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
-
-    hbar = playlistsWidget->horizontalScrollBar();
-    hbar->setStyleSheet("QScrollBar:horizontal { outline: 0; border-radius: 20px; border: 0px solid black; height: 5px; background: #141414; }" \
-                        "QScrollBar::add-line:horizontal { height: 0; }" \
-                        "QScrollBar::sub-line:horizontal { height: 0; }" \
-                        "QScrollBar::handle:horizontal { border-radius: 20px; height: 5px; background: gray; }" \
-                        "QScrollBar::handle:horizontal:hover { border-radius: 20px; height: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
-                        "QScrollBar::add-page:horizontal, QScrollBar::sub-page:vertical { height: 0px; }");
+    playlistsBar->setStyleSheet("QTabBar { height: 25px; font-size: 12px; border: 0px solid silver; background-color: #141414; color: silver; }" \
+                                "QTabBar::tab:selected { color: " + QString::fromStdString(mainColorStr) + ";}" \
+                                "QTabBar::tab:last { border-right: 0px solid #141414; } " \
+                                "QTabBar::scroller { width: 40px; }" \
+                                "QTabBar::close-button { padding: 3px; image: url(images/close.png); }" \
+                                "QTabBar QToolButton { border: 0px solid black; color: silver; background-color: #141414; }" \
+                                "QTabBar::tab { height: 25px; padding: 0px 20px; min-width: 80px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #141414; background-color: #181818; color: silver; }" \
+                                "QTabBar::tear { border: 0px solid black; }");
 
     searchSong->setStyleSheet("QLineEdit { padding: 0px 5px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid silver; background-color: #181818; color: silver; }" \
                               "QLineEdit:focus { border-bottom: 1px solid " + QString::fromStdString(mainColorStr) + "; }");
