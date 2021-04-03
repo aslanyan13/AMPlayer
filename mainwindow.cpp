@@ -1292,12 +1292,12 @@ void MainWindow::reloadStyles () {
                         "QScrollBar::add-page:horizontal, QScrollBar::sub-page:vertical { height: 0px; }");
 
     playlistsBar->setStyleSheet("QTabBar { height: 25px; font-size: 12px; border: 0px solid silver; background-color: #101010; color: silver; }" \
-                                "QTabBar::tab:selected { color: " + QString::fromStdString(mainColorStr) + ";}" \
+                                "QTabBar::tab:selected { background-color: #141414; color: " + QString::fromStdString(mainColorStr) + ";}" \
                                 "QTabBar::tab:last { border-right: 0px solid #101010; } " \
                                 "QTabBar::scroller { width: 40px; }" \
-                                "QTabBar::close-button { padding: 3px; image: url(images/close.png); }" \
+                                "QTabBar::close-button { padding: 4px; image: url(images/close.png); }" \
                                 "QTabBar QToolButton { border: 0px solid black; color: silver; background-color: #101010; }" \
-                                "QTabBar::tab { height: 25px; padding: 0px 20px; min-width: 80px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #101010; background-color: #141414; color: silver; }" \
+                                "QTabBar::tab { height: 25px; background-color: #101010; padding: 0px 20px; min-width: 80px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #101010; color: silver; }" \
                                 "QTabBar::tear { border: 0px solid black; }");
 
     if (shuffle) shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + ";");
