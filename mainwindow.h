@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+// Qt libraries
 #include <QMainWindow>
 #include <QPushButton>
 #include <QPaintEvent>
@@ -30,11 +31,18 @@
 #include <QDirIterator>
 #include <QWheelEvent>
 #include <QHBoxLayout>
+#include <QGraphicsPixmapItem>
+#include <QGraphicsScene>
+
+// Taglib library
+#include <taglib/taglib.h>
+#include <taglib/tfile.h>
+#include <taglib/fileref.h>
+#include <taglib/tpropertymap.h>
 
 #include <iostream>
 #include <string>
 #include <vector>
-#include <map>
 #include <math.h>
 
 #include "bass.h"
@@ -69,6 +77,8 @@ private slots:
     void createPlaylist();
     void removePlaylist(int index);
 
+    void menuContext ();
+    void playlistsBarContextMenu (const QPoint&);
     void changeCurrentPlaylist (int index);
     void setActive(QListWidgetItem *);
     void setActive(int index);
@@ -129,6 +139,7 @@ private:
     bool shuffle = false;
     bool liveSpec = false;
     bool colorChanging = false;
+    bool coverLoaded = true;
     bool logging = true;
 
     float starttime;
@@ -181,6 +192,7 @@ private:
 
     PlaylistReader * XMLreader;
     settingsWindow * settingsWin = nullptr;
+
 
     void searchInPlaylist(const QString & text);
     void drawAllPlaylists();
