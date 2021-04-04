@@ -99,28 +99,21 @@ private slots:
         QMessageBox msgBox;
         msgBox.setWindowTitle("3D Audio");
         msgBox.setText("3D Audio functions will be added soon!");
-        msgBox.setStyleSheet("background-color: #141414; color: silver;");
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
         msgBox.exec();
     }
     void equalizer () {
         QMessageBox msgBox;
         msgBox.setWindowTitle("Equalizer");
         msgBox.setText("Equalizer will be added soon!");
-        msgBox.setStyleSheet("background-color: #141414; color: silver;");
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
         msgBox.exec();
     }
     void visualizations () {
         QMessageBox msgBox;
         msgBox.setWindowTitle("Visualizations");
         msgBox.setText("Visualizations will be added soon!");
-        msgBox.setStyleSheet("background-color: #141414; color: silver;");
-        msgBox.exec();
-    }
-    void metronome () {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Metronome");
-        msgBox.setText("Metronome will be added soon!");
-        msgBox.setStyleSheet("background-color: #141414; color: silver;");
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
         msgBox.exec();
     }
 
@@ -177,9 +170,9 @@ private:
     QPushButton * pauseBtn;
     QPushButton * audio3dBtn;
     QPushButton * equoBtn;
-    QPushButton * metronomeBtn;
     QPushButton * timerBtn;
     QPushButton * visualBtn;
+    QPushButton * volumeBtn;
     QPushButton * closeBtn;
     QPushButton * minimizeBtn;
 
