@@ -34,6 +34,9 @@
 #include <QGraphicsPixmapItem>
 #include <QGraphicsScene>
 
+// Qt WebSocket libs
+#include <QtWebSockets>
+
 // Taglib library
 #include <taglib/taglib.h>
 #include <taglib/tfile.h>
@@ -94,6 +97,20 @@ private slots:
     void changeRepeat ();
     void changeShuffle ();
 
+    void remoteDeviceConnect ();
+    void getRemoteCommands (const QString & command);
+    void httpNewConnection ();
+    QString getLocalAddress () {
+        QList<QHostAddress> list = QNetworkInterface::allAddresses();
+
+        for(int nIter=0; nIter<list.count(); nIter++)
+        {
+            if(!list[nIter].isLoopback())
+                if (list[nIter].protocol() == QAbstractSocket::IPv4Protocol && list[nIter].toString()[0] == '1')
+                    return list[nIter].toString();
+        }
+    }
+
     void settings ();
     void audio3D () {
         QMessageBox msgBox;
@@ -136,9 +153,10 @@ private:
     bool logging = true;
 
     float starttime;
-
     float volume = 1;
     float prerenderedFft[1024];
+
+    int httpServerPort;
 
     fifo_map <QString, vector <Song>> playlists;
 
@@ -186,6 +204,15 @@ private:
     PlaylistReader * XMLreader;
     settingsWindow * settingsWin = nullptr;
 
+    QWebSocketServer * removeControlServer;
+    QTcpServer * httpServer;
+    QList <QWebSocket *> remoteDevices;
+
+    void sendMessageToRemoteDevices (QString message) {
+        for (auto & device : remoteDevices) {
+            device->sendTextMessage(message);
+        }
+    }
 
     void searchInPlaylist(const QString & text);
     void drawAllPlaylists();
@@ -242,5 +269,6 @@ private:
 
         out << "ERROR! " <<  name << " [" << now.toString("hh:mm:ss") << "]: " << text << "\n";
     }
+
 };
 #endif // MAINWINDOW_H

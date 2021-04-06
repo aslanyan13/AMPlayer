@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
+
+	<style>
+		body {
+			background-color: #101010;
+
+		}
+		body * {
+			color: silver;
+		}
+		button {
+			background: none;
+			border: none;
+			cursor: pointer;
+			font-size: 36px;
+			outline: none;
+		}
+		p {
+			text-align: center;
+			margin: 20px;
+		}
+
+		input[type=range] {
+			width: 100%;
+		}
+	</style>
+
+	<script src="https://kit.fontawesome.com/a076d05399.js"></script>
+</head>
+<body>
+	<h3>Now playing: <span id="song-name">...</span></h3>
+
+	<p>
+		<button onclick="sendInfo('shuffle')"><i class="fas fa-random"></i></button>
+		<button onclick="sendInfo('backward')"><i class="fas fa-backward"></i></button>
+		<button onclick="sendInfo('pause')"><i class="fas fa-pause"></i></button>
+		<button onclick="sendInfo('forward')"><i class="fas fa-forward"></i></button>
+		<button onclick="sendInfo('repeat')"><i class="fas fa-sync"></i></button>
+	</p>
+
+	<p><input type="range" id="position" min="0" max="1000" oninput="sendInfo('pos|' + position.value)"></p>
+	<p><input type="range" id="volume" min="0" max="100" oninput="sendInfo('vol|' + volume.value)"></p>
+
+	<script>
+		let socket = new WebSocket("ws://<serverip>:<serverport>");
+
+		function sendInfo (data) {
+			socket.send(data);
+		}
+
+		socket.onmessage = function (event) {
+			console.debug("WebSocket message received: ", event);
+			document.querySelector('#song-name').innerHTML = event.data;
+		}
+	</script>
+</body>
+</html>

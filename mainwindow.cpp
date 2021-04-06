@@ -30,6 +30,30 @@ QImage applyEffectToImage(QImage src, QGraphicsEffect *effect, int extent = 0)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    // Remote Control Server enabling
+    removeControlServer = new QWebSocketServer("Remote Control Server", QWebSocketServer::NonSecureMode, this);
+
+    if (removeControlServer->listen(QHostAddress::Any, 9999)) {
+        qDebug() << "Remote control socket started listening in port 9999!";
+
+        connect(removeControlServer, &QWebSocketServer::newConnection, this, &MainWindow::remoteDeviceConnect);
+    }
+    else {
+        qDebug() << "Failed to start socket! " << removeControlServer->errorString();
+    }
+
+    httpServer = new QTcpServer(this);
+    httpServerPort = rand() % 9999;
+
+    if (httpServer->listen(QHostAddress::Any, httpServerPort)) {
+        qDebug() << "Http server started with port" << httpServerPort;
+
+        connect(httpServer, &QTcpServer::newConnection, this, &MainWindow::httpNewConnection);
+
+    } else {
+        qDebug() << "Failed to start http server!";
+    }
+
     starttime = clock();
 
     if (logging) {
@@ -378,8 +402,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (shuffleBtn, SIGNAL(clicked()), this, SLOT(changeShuffle()));
     connect (audio3dBtn, SIGNAL(clicked()), this, SLOT(audio3D()));
     connect (equoBtn, SIGNAL(clicked()), this, SLOT(equalizer()));
-    connect (visualBtn, SIGNAL(clicked()), this, SLOT(visualizations()));
 
+    connect (remoteBtn, &QPushButton::clicked, [=]() {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Equalizer");
+        msgBox.setText("Remote control server address: " + getLocalAddress() + ":" + QString::number(httpServerPort));
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
+        msgBox.exec();
+    });
+
+    connect (visualBtn, SIGNAL(clicked()), this, SLOT(visualizations()));
     connect (volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(changeVolume(int)));
 
     drawPlaylist();
@@ -753,6 +785,8 @@ void MainWindow::drawPlaylist() {
 void MainWindow::setTitle () {
     QString name = playlists[currentPlaylistName][currentID].getName();
 
+    sendMessageToRemoteDevices(name);
+
     if (name.length() > 32)
         name = name.mid(0, 32) + "...";
 
@@ -911,6 +945,7 @@ void MainWindow::pause()
 }
 void MainWindow::changeVolume (int vol)
 {
+    volumeSlider->setValue(vol);
     volume = vol / 100.0f;
     writeLog("Volume changed to: " + QString::number(vol));
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
@@ -1375,4 +1410,83 @@ void MainWindow::colorChange()
     }
 
     reloadStyles ();
+}
+
+// Web Socket Functions
+void MainWindow::remoteDeviceConnect () {
+    qDebug() << "New connection";
+
+    auto socket = removeControlServer->nextPendingConnection();
+    socket->setParent(this);
+
+    connect(socket, &QWebSocket::textMessageReceived, this, &MainWindow::getRemoteCommands);
+    // connect(socket, &QWebSocket::disconnected, this, &MainWindow::socketDisconnected);
+
+    remoteDevices << socket;
+
+    if (channel != NULL) {
+        sendMessageToRemoteDevices(playlists[currentPlaylistName][currentID].getName());
+    }
+}
+
+
+void MainWindow::getRemoteCommands (const QString & command) {
+    qDebug() << command;
+
+    if (command.contains('|')) {
+        if (command.mid(0, command.indexOf('|')) == "pos") {
+            QString pos = command.mid(command.indexOf('|') + 1);
+            double new_time = getDuration() * (pos.toDouble() / 1000.0f);
+
+            qDebug() << "Pos: " << new_time;
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+        }
+        if (command.mid(0, command.indexOf('|')) == "vol") {
+            QString vol = command.mid(command.indexOf('|') + 1);
+            qDebug() << "Pos: " << vol;
+            changeVolume(vol.toDouble());
+        }
+    }
+    else {
+        if (command == "shuffle") changeShuffle();
+        if (command == "pause") pause();
+        if (command == "backward") backward();
+        if (command == "forward") forward();
+        if (command == "repeat") changeRepeat();
+    }
+}
+
+void MainWindow::httpNewConnection() {
+    QFile htmlFile("index.html");
+
+    if (!htmlFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "Error!";
+    }
+
+    qDebug() << "New http server connection!";
+
+    auto socket = httpServer->nextPendingConnection();
+
+    QTextStream in(&htmlFile);
+    QString line = "";
+
+    while (!in.atEnd()) {
+       line += in.readLine();
+    }
+
+    line.replace("<serverip>", getLocalAddress());
+    line.replace("<serverport>", QString::number(9999));
+
+    QString html = QString::fromStdString("HTTP/1.0 200 Ok\r\n"
+                   "Content-Type: text/html; charset=\"utf-8\"\r\n"
+                   "\r\n") + line;
+
+    socket->write(html.toStdString().c_str());
+    socket->flush();
+    socket->waitForBytesWritten(3000);
+
+    QTimer::singleShot(3000, [=]() {
+        qDebug() << "Connection closed!";
+        socket->close();
+    });
 }
