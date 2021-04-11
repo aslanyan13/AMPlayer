@@ -151,6 +151,7 @@ private:
     bool colorChanging = false;
     bool coverLoaded = true;
     bool logging = true;
+    bool volumeSliderToggled = false;
 
     float starttime;
     float volume = 1;

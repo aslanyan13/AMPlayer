@@ -111,7 +111,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Album cover load
     QImageReader reader(QDir::currentPath() + "/Images/cover-placeholder2.png");
-    // QImageReader reader (":/Images/cover-placeholder.png");
     cover = reader.read();
 
     if (cover.isNull()) {
@@ -174,7 +173,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     QPushButton * forwardBtn = new QPushButton(this);
     forwardBtn->setFont(fontAwesome);
-    forwardBtn->setGeometry(445, 290, 40, 40);
+    forwardBtn->setGeometry(455, 290, 40, 40);
     forwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #101010; color: silver;");
     forwardBtn->setText("\uf04e");
     forwardBtn->setCursor(Qt::PointingHandCursor);
@@ -182,7 +181,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     QPushButton * backwardBtn = new QPushButton(this);
     backwardBtn->setFont(fontAwesome);
-    backwardBtn->setGeometry(325, 290, 40, 40);
+    backwardBtn->setGeometry(315, 290, 40, 40);
     backwardBtn->setStyleSheet("vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #101010; color: silver;");
     backwardBtn->setText("\uf04a");
     backwardBtn->setCursor(Qt::PointingHandCursor);
@@ -190,31 +189,31 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     repeatBtn = new QPushButton(this);
     repeatBtn->setFont(fontAwesome);
-    repeatBtn->setGeometry(500, 291, 30, 30);
+    repeatBtn->setGeometry(510, 291, 30, 30);
     repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
     repeatBtn->setText("\uf363");
     repeatBtn->setCursor(Qt::PointingHandCursor);
     repeatBtn->show();
 
-    equoBtn = new QPushButton(this);
-    equoBtn->setFont(fontAwesome);
-    equoBtn->setGeometry(235, 291, 30, 30);
-    equoBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
-    equoBtn->setText("\uf3f1");
-    equoBtn->setCursor(Qt::PointingHandCursor);
-    equoBtn->show();
-
     shuffleBtn = new QPushButton(this);
     shuffleBtn->setFont(fontAwesome);
-    shuffleBtn->setGeometry(275, 291, 30, 30);
+    shuffleBtn->setGeometry(265, 291, 30, 30);
     shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
     shuffleBtn->setText("\uf074");
     shuffleBtn->setCursor(Qt::PointingHandCursor);
     shuffleBtn->show();
 
+    equoBtn = new QPushButton(this);
+    equoBtn->setFont(fontAwesome);
+    equoBtn->setGeometry(225, 291, 30, 30);
+    equoBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
+    equoBtn->setText("\uf3f1");
+    equoBtn->setCursor(Qt::PointingHandCursor);
+    equoBtn->show();
+
     QPushButton * remoteBtn = new QPushButton(this);
     remoteBtn->setFont(fontAwesome);
-    remoteBtn->setGeometry(155, 291, 30, 30);
+    remoteBtn->setGeometry(145, 291, 30, 30);
     remoteBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
     remoteBtn->setText("\uf3cd");
     remoteBtn->setCursor(Qt::PointingHandCursor);
@@ -222,7 +221,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     timerBtn = new QPushButton (this);
     timerBtn->setFont(fontAwesome);
-    timerBtn->setGeometry(195, 291, 30, 30);
+    timerBtn->setGeometry(185, 291, 30, 30);
     timerBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
     timerBtn->setText("\uf017");
     timerBtn->setCursor(Qt::PointingHandCursor);
@@ -230,7 +229,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     audio3dBtn = new QPushButton(this);
     audio3dBtn->setFont(fontAwesome);
-    audio3dBtn->setGeometry(540, 291, 30, 30);
+    audio3dBtn->setGeometry(550, 291, 30, 30);
     audio3dBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
     audio3dBtn->setText("\uf1b2");
     audio3dBtn->setCursor(Qt::PointingHandCursor);
@@ -238,7 +237,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     visualBtn = new QPushButton(this);
     visualBtn->setFont(fontAwesome);
-    visualBtn->setGeometry(580, 291, 30, 30);
+    visualBtn->setGeometry(590, 291, 30, 30);
     visualBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
     visualBtn->setText("\uf26c");
     visualBtn->setCursor(Qt::PointingHandCursor);
@@ -246,7 +245,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     volumeBtn = new QPushButton (this);
     volumeBtn->setFont(fontAwesome);
-    volumeBtn->setGeometry(620, 291, 30, 30);
+    volumeBtn->setGeometry(630, 291, 30, 30);
     volumeBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
     volumeBtn->setCursor(Qt::PointingHandCursor);
     volumeBtn->setText("\uf028");
@@ -350,33 +349,33 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songDuration->setStyleSheet("/* border: 1px solid silver; background-color: #101010; */ color: gray;");
     songDuration->show();
 
-    volumeSlider = new QSlider (Qt::Vertical, this);
+    volumeSlider = new QSlider (Qt::Horizontal, this);
     volumeSlider->setMaximum(100);
     volumeSlider->setMinimum(0);
     volumeSlider->setValue(100);
     volumeSlider->setCursor(Qt::PointingHandCursor);
-    volumeSlider->setGeometry(625, 141, 20, 150);
-    volumeSlider->setStyleSheet("QSlider::groove:vertical {" \
+    volumeSlider->setGeometry(670, 302, 115, 20);
+    volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
                                     "border: 1px solid #999999; " \
                                     "border-radius: 20px;" \
                                     "background: #141414;"\
-                                    "margin: 0px 7px;"\
+                                    "margin: 7px 0px;"\
                                 "}" \
-                               "QSlider::handle:vertical {" \
+                               "QSlider::handle:horizontal {" \
                                     "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); "\
                                     "border: 1px solid #5c5c5c; "\
-                                    "height: 5px; " \
-                                    "margin: -2px -5px; " \
+                                    "width: 5px; " \
+                                    "margin: -5px -2px; " \
                                     "border-radius: 20px; " \
                                 "}"
-                                "QSlider::add-page:vertical {" \
+                                "QSlider::sub-page:horizontal {" \
                                     "border-radius: 20px;" \
-                                    "margin: 0px 7px;" \
+                                    "margin: 7px 0px;" \
                                     "background: " + tr(mainColorStr.c_str()) + "; " \
                                 "}" \
-                                "QSlider::sub-page:vertical {" \
+                                "QSlider::add-page:horizontal {" \
                                     "border-radius: 20px;" \
-                                    "margin: 0 7px;" \
+                                    "margin: 7px 0px;" \
                                     "background: silver; " \
                                 "}");
 
@@ -385,7 +384,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (searchSong, SIGNAL(textChanged(const QString &)), this, SLOT(search(const QString &)));
 
     connect (playlistsBar, SIGNAL (customContextMenuRequested(const QPoint&)), this, SLOT(playlistsBarContextMenu (const QPoint&)));
-    connect (playlistsBar, SIGNAL (tabBarClicked(int)), this, SLOT(changeCurrentPlaylist (int)));
+    connect (playlistsBar, SIGNAL (currentChanged(int)), this, SLOT(changeCurrentPlaylist (int)));
     connect (playlistsBar, SIGNAL (tabCloseRequested(int)), this, SLOT(removePlaylist (int)));
 
     connect (playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
@@ -797,6 +796,9 @@ void MainWindow::changeCurrentPlaylist (int index) {
         playlistsBar->removeTab(index);
         return;
     }
+
+    if (playlists.find(playlistsBar->tabText(index)) == playlists.end())
+        return;
 
     searchSong->setText("");
     playlists[currentPlaylistName] = playlist;
@@ -1222,9 +1224,14 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
         playlistWidget->lower();
     }
 
-    if (volumeBtn->underMouse()) volumeSlider->show();
+    if (volumeBtn->underMouse())
+        volumeSliderToggled = true;
 
-    if (!volumeBtn->underMouse() && !volumeSlider->underMouse()) volumeSlider->hide();
+    if (volumeSliderToggled && mouseX >= 630 && mouseX <= 785 && mouseY >= 291 && mouseY <= 321) volumeSlider->show();
+    else {
+        volumeSlider->hide();
+        volumeSliderToggled = false;
+    }
 
     if (!titlebarWidget->underMouse() && !windowTitle->underMouse())
         return;
@@ -1302,27 +1309,27 @@ void MainWindow::settings () {
 }
 void MainWindow::reloadStyles () {
     closeBtn->setStyleSheet("font-size: 15px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + ";");
-    volumeSlider->setStyleSheet("QSlider::groove:vertical {" \
+    volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
                                     "border: 1px solid #999999; " \
                                     "border-radius: 20px;" \
                                     "background: #141414;"\
-                                    "margin: 0px 7px;"\
+                                    "margin: 7px 0px;"\
                                 "}" \
-                               "QSlider::handle:vertical {" \
+                               "QSlider::handle:horizontal {" \
                                     "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f); "\
                                     "border: 1px solid #5c5c5c; "\
-                                    "height: 5px; " \
-                                    "margin: -2px -5px; " \
+                                    "width: 5px; " \
+                                    "margin: -5px -2px; " \
                                     "border-radius: 20px; " \
                                 "}"
-                                "QSlider::add-page:vertical {" \
+                                "QSlider::sub-page:horizontal {" \
                                     "border-radius: 20px;" \
-                                    "margin: 0px 7px;" \
+                                    "margin: 7px 0px;" \
                                     "background: " + tr(mainColorStr.c_str()) + "; " \
                                 "}" \
-                                "QSlider::sub-page:vertical {" \
+                                "QSlider::add-page:horizontal {" \
                                     "border-radius: 20px;" \
-                                    "margin: 0 7px;" \
+                                    "margin: 7px 0px;" \
                                     "background: silver; " \
                                 "}");
 
