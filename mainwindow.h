@@ -47,11 +47,18 @@
 #include <string>
 #include <vector>
 #include <math.h>
+#include <future>
+#include <chrono>
+#include <thread>
 
 #include "bass.h"
+#include "bass_fx.h"
+
 #include "song.h"
 #include "settingswindow.h"
 #include "playlistreader.h"
+#include "equalizerwindow.h"
+
 #include "fifo_map.hpp"
 
 using namespace std;
@@ -120,11 +127,12 @@ private slots:
         msgBox.exec();
     }
     void equalizer () {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Equalizer");
-        msgBox.setText("Equalizer will be added soon!");
-        msgBox.setStyleSheet("background-color: #101010; color: silver;");
-        msgBox.exec();
+        /*
+        equalizerWin->raise();
+        equalizerWin->setFocus();
+        equalizerWin->show();
+        equalizerWin->move (this->pos().x() + 200, this->pos().y() + 150);
+        */
     }
     void visualizations () {
         QMessageBox msgBox;
@@ -151,7 +159,9 @@ private:
     bool colorChanging = false;
     bool coverLoaded = true;
     bool logging = true;
+    bool remoteServerEnabled = false;
     bool volumeSliderToggled = false;
+    bool trackChanged = false;
 
     float starttime;
     float volume = 1;
@@ -192,6 +202,7 @@ private:
     QPushButton * timerBtn;
     QPushButton * visualBtn;
     QPushButton * volumeBtn;
+    QPushButton * remoteBtn;
     QPushButton * closeBtn;
     QPushButton * minimizeBtn;
 
@@ -202,8 +213,9 @@ private:
 
     Ui::MainWindow *ui;
 
-    PlaylistReader * XMLreader;
+    PlaylistReader * XMLreader = nullptr;
     settingsWindow * settingsWin = nullptr;
+    equalizerWindow * equalizerWin = nullptr;
 
     QWebSocketServer * removeControlServer;
     QTcpServer * httpServer;
@@ -219,15 +231,18 @@ private:
     void drawAllPlaylists();
     void drawPlaylist();
     void setTitle();
-    void prerenderFft ();
+    void prerenderFft (QString file);
     void clearPrerenderedFft() {
         for (int i = 0; i < 1024; i++)
             prerenderedFft[i] = 3;
     }
 
+    // If main window closed, close subwindows
     void closeEvent(QCloseEvent * event) {
+        this->equalizerWin->close();
         this->settingsWin->close();
     };
+
     void paintEvent(QPaintEvent * event);
     void mousePressEvent (QMouseEvent * event);
     void mouseMoveEvent (QMouseEvent * event);

@@ -31,6 +31,7 @@ class settingsWindow : public QWidget
 
 public:
     QPushButton * colorBtns[8];
+
     string * mainColorStr = nullptr;
     QColor * mainColor = nullptr;
     bool * colorChanger = nullptr;
@@ -43,9 +44,11 @@ public:
     ~settingsWindow();
 
     void init();
+
 private slots:
     void slot_close() { this->close(); };
     void changeColor ();
+
 private:
     Ui::settingsWindow *ui;
 
@@ -62,8 +65,6 @@ private:
     QPushButton * closeBtn;
     QPushButton * minimizeBtn;
     QTabWidget  * tabs;
-
-
 };
 
 #endif // SETTINGSWINDOW_H

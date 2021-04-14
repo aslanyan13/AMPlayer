@@ -15,8 +15,10 @@ LIBS += \
     -L"C:\taglib\taglib" -ltag
 
 LIBS += C:/C/bass.lib
+LIBS += C:/bassfx/bass_fx.lib
 
 SOURCES += \
+    equalizerwindow.cpp \
     main.cpp \
     mainwindow.cpp \
     playlistreader.cpp \
@@ -24,12 +26,14 @@ SOURCES += \
     song.cpp
 
 HEADERS += \
+    equalizerwindow.h \
     mainwindow.h \
     playlistreader.h \
     settingswindow.h \
     song.h
 
 FORMS += \
+    equalizerwindow.ui \
     mainwindow.ui \
     settingswindow.ui
 

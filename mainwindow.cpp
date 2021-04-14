@@ -30,29 +30,10 @@ QImage applyEffectToImage(QImage src, QGraphicsEffect *effect, int extent = 0)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
-    // Remote Control Server enabling
     removeControlServer = new QWebSocketServer("Remote Control Server", QWebSocketServer::NonSecureMode, this);
-
-    if (removeControlServer->listen(QHostAddress::Any, 9999)) {
-        qDebug() << "Remote control socket started listening in port 9999!";
-
-        connect(removeControlServer, &QWebSocketServer::newConnection, this, &MainWindow::remoteDeviceConnect);
-    }
-    else {
-        qDebug() << "Failed to start socket! " << removeControlServer->errorString();
-    }
 
     httpServer = new QTcpServer(this);
     httpServerPort = rand() % 9999;
-
-    if (httpServer->listen(QHostAddress::Any, httpServerPort)) {
-        qDebug() << "Http server started with port" << httpServerPort;
-
-        connect(httpServer, &QTcpServer::newConnection, this, &MainWindow::httpNewConnection);
-
-    } else {
-        qDebug() << "Failed to start http server!";
-    }
 
     starttime = clock();
 
@@ -104,7 +85,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // Window settings
     this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
-    this->setStyleSheet("QMainWindow { background-color: #101010; } QInputDialog, QInputDialog * { background-color: #101010; color: silver; }");
+    this->setStyleSheet("QMainWindow { background-color: #101010; }"
+                        "QInputDialog, QInputDialog * { background-color: #101010; color: silver; }");
+
     this->setWindowTitle("AMPlayer v1.0a");
     this->setMouseTracking(true);
     this->centralWidget()->setMouseTracking(true);
@@ -116,11 +99,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     if (cover.isNull()) {
         coverLoaded = false;
         cover = QImage (":/Images/cover-placeholder.png");
-        cout << reader.errorString().toStdString() << endl;
+
+        qDebug() << reader.errorString();
         writeLog ("Can't load cover! " + reader.errorString());
     }
 
     settingsWin = new settingsWindow();
+    equalizerWin = new equalizerWindow();
 
     QHBoxLayout * horizontalLayout = new QHBoxLayout();
     horizontalLayout->setSpacing(0);
@@ -144,7 +129,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     menuBtn->setGeometry(10, 10, 15, 15);
     menuBtn->setStyleSheet("font-size: 15px; border: 0px solid silver; background-color: #101010; color: gray;");
     menuBtn->setCursor(Qt::PointingHandCursor);
-    menuBtn->setText(QString::fromStdWString(L"⬤"));
+    menuBtn->setText(QString::fromStdWString(L"\u2b24"));
     menuBtn->show();
 
     closeBtn = new QPushButton(this);
@@ -152,7 +137,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     closeBtn->setGeometry(775, 10, 15, 15);
     closeBtn->setStyleSheet("font-size: 15px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + ";");
     closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setText(QString::fromStdWString(L"⬤"));
+    closeBtn->setText(QString::fromStdWString(L"\u2b24"));
     closeBtn->show();
 
     minimizeBtn = new QPushButton(this);
@@ -160,7 +145,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     minimizeBtn->setGeometry(750, 10, 15, 15);
     minimizeBtn->setStyleSheet("font-size: 15px; border: 0px solid silver; background-color: #101010; color: silver;");
     minimizeBtn->setCursor(Qt::PointingHandCursor);
-    minimizeBtn->setText(QString::fromStdWString(L"⬤"));
+    minimizeBtn->setText(QString::fromStdWString(L"\u2b24"));
     minimizeBtn->show();
 
     pauseBtn = new QPushButton(this);
@@ -211,7 +196,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     equoBtn->setCursor(Qt::PointingHandCursor);
     equoBtn->show();
 
-    QPushButton * remoteBtn = new QPushButton(this);
+    remoteBtn = new QPushButton(this);
     remoteBtn->setFont(fontAwesome);
     remoteBtn->setGeometry(145, 291, 30, 30);
     remoteBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver;");
@@ -403,11 +388,36 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (equoBtn, SIGNAL(clicked()), this, SLOT(equalizer()));
 
     connect (remoteBtn, &QPushButton::clicked, [=]() {
+
+        if (!remoteServerEnabled) {
+            if (removeControlServer->listen(QHostAddress::Any, 9999)) {
+                qDebug() << "Remote control socket started listening in port 9999!";
+
+                remoteServerEnabled = true;
+                reloadStyles();
+
+                connect(removeControlServer, &QWebSocketServer::newConnection, this, &MainWindow::remoteDeviceConnect);
+            }
+            else {
+                qDebug() << "Failed to start socket! " << removeControlServer->errorString();
+            }
+
+            if (httpServer->listen(QHostAddress::Any, httpServerPort)) {
+                qDebug() << "Http server started with port" << httpServerPort;
+
+                connect(httpServer, &QTcpServer::newConnection, this, &MainWindow::httpNewConnection);
+            } else
+            {
+                qDebug() << "Failed to start http server!";
+            }
+        }
+
         QMessageBox msgBox;
-        msgBox.setWindowTitle("Equalizer");
+        msgBox.setWindowTitle("Remote Control Server");
         msgBox.setText("Remote control server address: " + getLocalAddress() + ":" + QString::number(httpServerPort));
         msgBox.setStyleSheet("background-color: #101010; color: silver;");
         msgBox.exec();
+
     });
 
     connect (visualBtn, SIGNAL(clicked()), this, SLOT(visualizations()));
@@ -465,6 +475,7 @@ bool MainWindow::openFile ()
     dialog.setDirectory(QDir::homePath());
     dialog.setFileMode(QFileDialog::ExistingFiles);
     dialog.setNameFilter(trUtf8("Audio files (*.mo3 *.mp3 *.mp2 *.mp1 *.ogg *.aif *.wav)"));
+
     QStringList fileNames;
 
     if (dialog.exec())
@@ -472,7 +483,6 @@ bool MainWindow::openFile ()
 
     for (int i = 0; i < fileNames.length(); i++)
     {
-        qDebug() << fileNames[i];
         Song temp(fileNames[i]);
 
         TagLib::FileRef f(fileNames[i].toStdWString().c_str());
@@ -722,7 +732,7 @@ void MainWindow::removePlaylist (int index) {
 }
 void MainWindow::search(const QString & text)
 {
-    cout << text.toStdString() << endl;
+    qDebug() << text;
     writeLog("Searching query: " + text);
 
     searchInPlaylist(text);
@@ -845,6 +855,8 @@ void MainWindow::setActive(QListWidgetItem * item) {
     setActive (playlistWidget->currentRow());
 }
 void MainWindow::setActive (int index) {
+    clearPrerenderedFft();
+
     paused = true;
     pauseBtn->setText("\uf04c"); // Set symbol to pause
 
@@ -865,9 +877,16 @@ void MainWindow::setActive (int index) {
     if (channel != NULL)
         BASS_StreamFree(channel);
 
-    channel = BASS_StreamCreateFile(FALSE, path.toStdWString().c_str(), 0, 0, 0);
+    channel = BASS_StreamCreateFile(FALSE, path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+    channel = BASS_FX_TempoCreate(channel, NULL);
 
-    prerenderFft();
+    equalizerWin->channel = &channel;
+    equalizerWin->init();
+
+    auto func = std::bind(&MainWindow::prerenderFft, this, path);
+
+    std::thread thr(func);
+    thr.detach();
 
     BASS_ChannelPlay(channel, false);
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
@@ -1035,23 +1054,7 @@ void MainWindow::updateTime() {
                 } while (songID == currentID);
 
                 currentID = songID;
-
-                playlistWidget->setCurrentRow(currentID);
-
-                BASS_StreamFree(channel);
-                channel = BASS_StreamCreateFile(FALSE, playlist[currentID].path.toStdWString().c_str(), 0, 0, 0);
-
-                prerenderFft();
-
-                BASS_ChannelPlay(channel, true);
-                BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
-
-                QString pos = QString::fromStdString(seconds2string(getPosition()));
-                songPosition->setText(pos);
-                QString len = QString::fromStdString(seconds2string(getDuration()));
-                songDuration->setText(len);
-
-                setTitle();
+                setActive(currentID);
             } else {
                 writeLog("Changing to next song");
                 forward();
@@ -1150,25 +1153,27 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     }
 }
 
-void MainWindow::prerenderFft ()
+void MainWindow::prerenderFft (QString file)
 {   
-    if (channel == NULL) return;
+    HSTREAM tmp;
+    tmp = BASS_StreamCreateFile(FALSE, file.toStdWString().c_str(), 0, 0, 0);
 
     writeLog("Prerendering fft...");
 
     int k = 0;
-    float time = getDuration();
+    QWORD len = BASS_ChannelGetLength(tmp, BASS_POS_BYTE); // the length in bytes
+    float time = BASS_ChannelBytes2Seconds(tmp, len);      // the length in seconds
 
     int avgLen = 16;
 
-    float vol = volume;
-    changeVolume(0);
-    BASS_ChannelPlay(channel, FALSE);
+    BASS_ChannelSetAttribute(tmp, BASS_ATTRIB_VOL, 0);
+    BASS_ChannelPlay(tmp, FALSE);
 
     float fft[1024];
+    float tempfft[300];
     for (float i = 0; i < time; i+= time / 140, k++)
     {
-        BASS_ChannelGetData(channel, fft, BASS_DATA_FFT2048);
+        BASS_ChannelGetData(tmp, fft, BASS_DATA_FFT2048);
 
         float max = 0;
         for (int j = 1; j <= avgLen; j++)
@@ -1180,13 +1185,47 @@ void MainWindow::prerenderFft ()
         if (max <= 3) max = 3;
         else if (max > 40) max = 40;
 
-        prerenderedFft[(int)k] = max;
+        tempfft[(int)k] = max;
 
-        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, i), BASS_POS_BYTE);
+        BASS_ChannelSetPosition(tmp, BASS_ChannelSeconds2Bytes(tmp, i), BASS_POS_BYTE);
     }
 
-    BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, 0), BASS_POS_BYTE);
-    changeVolume(vol * 100);
+    BASS_StreamFree(tmp);
+
+    /*
+    bool isEnded;
+    k = 1;
+
+    do {
+       isEnded = true;
+
+       for (int i = 0; i < k; i++)
+       {
+           if (tempfft[i] > prerenderedFft[i]) {
+               isEnded = false;
+               prerenderedFft[i]++;
+           }
+           if (tempfft[i] == prerenderedFft[i]) k++;
+       }
+
+       std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    } while (!isEnded && k < 300);
+    */
+
+    for (int i = 0; i < 300; i++)
+    {
+        do {
+            prerenderedFft[i]++;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            if (this->playlists[playingSongPlaylist][currentID].path != file) return;
+        } while (prerenderedFft[i] < tempfft[i]);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+        if (this->playlists[playingSongPlaylist][currentID].path != file) return;
+    }
+
+    qDebug() << file;
 
     writeLog("Prerendering fft ended");
 }
@@ -1252,6 +1291,7 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
                 BASS_ChannelStop(channel);
                 BASS_ChannelPlay(channel, true);
             }
+
             double newtime = ((mouseX - 50) / (700.0f)) * getDuration();
 
             BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, newtime), BASS_POS_BYTE);
@@ -1275,17 +1315,19 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
     float mouseX = event->position().x();
     float mouseY = event->position().y();
 
+    double new_time = getPosition();
+
     if (mouseX > 50 && mouseX < 750 && mouseY > 350 && mouseY < 390) {
         if (event->angleDelta().ry() < 0)
         {
-            double new_time = getPosition() - 3;
-            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
-        } else {
-            double new_time = getPosition() + 3;
-            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+            new_time -= 3;
+        }
+        else if (event->angleDelta().ry() > 0) {
+            new_time += 3;
         }
     }
 
+    BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
 }
 void MainWindow::settings () {
     bool * colorChangePtr = &colorChanging;
@@ -1364,6 +1406,8 @@ void MainWindow::reloadStyles () {
 
     if (shuffle) shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + ";");
     if (repeat) repeatBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + ";");
+    if (remoteServerEnabled) remoteBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + ";");
+
 }
 
 void MainWindow::colorChange()
@@ -1427,7 +1471,6 @@ void MainWindow::remoteDeviceConnect () {
     socket->setParent(this);
 
     connect(socket, &QWebSocket::textMessageReceived, this, &MainWindow::getRemoteCommands);
-    // connect(socket, &QWebSocket::disconnected, this, &MainWindow::socketDisconnected);
 
     remoteDevices << socket;
 
