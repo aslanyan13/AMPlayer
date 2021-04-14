@@ -1026,6 +1026,9 @@ string MainWindow::seconds2string (float seconds) {
 }
 
 void MainWindow::updateTime() {
+    static float songPos = getPosition();   // Static variable of song position
+    static int counter = 0;                 // Passed frames counter
+
     if (isOrderChanged)
     {
         reorderPlaylist();
@@ -1033,6 +1036,19 @@ void MainWindow::updateTime() {
     }
 
     if (channel != NULL) {
+        // If song stay in same position, increase counter by 1
+        if (songPos == getPosition())
+            counter++;
+
+        // if counter value equals 3 (3 frames passed) and position still same, then
+        // the scrolling stopped, so continue playing (if track not paused) and reset counter
+        if (counter >= 5 && songPos == getPosition() && paused) {
+            BASS_ChannelPlay(channel, false);
+            counter = 0;
+        }
+        else
+            songPos = getPosition();
+
         QString pos = QString::fromStdString(seconds2string(getPosition()));
         songPosition->setText(pos);
 
@@ -1327,6 +1343,8 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
         }
     }
 
+    // Pause channel while scrolling (for better perfomance)
+    BASS_ChannelPause(channel);
     BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
 }
 void MainWindow::settings () {
