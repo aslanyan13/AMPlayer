@@ -119,10 +119,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     titlebarWidget->setStyleSheet("color: silver;");
 
     windowTitle = new QLabel(titlebarWidget);
-    windowTitle->setGeometry(0, 0, 800, 30);
+    windowTitle->setGeometry(0, 3, 800, 30);
     windowTitle->setAlignment(Qt::AlignCenter);
-    windowTitle->setObjectName("windowTitle");
-    windowTitle->setText("AMPlayer v1.0a");
+    windowTitle->setText("AMPlayer");
 
     QPushButton * menuBtn = new QPushButton(this);
     menuBtn->setFont(fontAwesome);
@@ -244,8 +243,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songTitle->setStyleSheet("/* border: 1px solid silver; */ font-size: 20px; color: silver;");
     songTitle->show();
 
-    QLabel * songInfo = new QLabel(this);
-    songInfo->setText("Genre, 44.1k MP3");
+    songInfo = new QLabel(this);
+    songInfo->setText("");
     songInfo->setGeometry(200, 255, 400, 16);
     songInfo->setAlignment(Qt::AlignCenter);
     songInfo->setStyleSheet("/* border: 1px solid silver; */ color: gray;");
@@ -260,6 +259,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     timecode->setStyleSheet("font-size: 10px; border: 1px solid silver; background-color: #101010; color: silver;");
 
     playlistsBar = new QTabBar(this);
+    playlistsBar->setFont(fontAwesome);
     playlistsBar->setDocumentMode(true);
     playlistsBar->setDrawBase(false);
     playlistsBar->setExpanding (false);
@@ -273,7 +273,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                 "QTabBar::scroller { width: 40px; }" \
                                 "QTabBar::close-button { padding: 4px; image: url(images/close.png); }" \
                                 "QTabBar QToolButton { border: 0px solid black; color: silver; background-color: #101010; }" \
-                                "QTabBar::tab { height: 25px; background-color: #101010; padding: 0px 20px; min-width: 80px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #101010; color: silver; }" \
+                                "QTabBar::tab { height: 25px; background-color: #101010; padding: 0px 20px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #101010; color: silver; }" \
                                 "QTabBar::tear { border: 0px solid black; }");
 
     playlistsBar->show();
@@ -301,21 +301,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     playlistWidget->setDragDropMode(QAbstractItemView::DragDrop);
     playlistWidget->setDefaultDropAction(Qt::MoveAction);
-
-
-    playlistWidget->setGeometry(15, 455, 775, 160);
+    playlistWidget->setGeometry(15, 460, 775, 160);
     playlistWidget->lower();
     playlistWidget->setStyleSheet("QListWidget { outline: 0; padding: 5px; padding-left: 15px; font-size: 14px; /*border: 1px solid silver;*/ border-radius: 5px; border-top-left-radius: 0px; background-color: #141414; color: silver; }" \
                                   "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
                                   "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
-
     playlistWidget->show();
 
     searchSong = new QLineEdit(this);
-    searchSong->setStyleSheet("QLineEdit { padding: 0px 20px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid #101010; background-color: #141414; color: silver; }" \
+    searchSong->setFont(fontAwesome);
+    searchSong->setStyleSheet("QMenu { background-color: #101010; color: silver; }"
+                              "QLineEdit { padding: 0px 20px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid #101010; background-color: #141414; color: silver; }" \
                               "QLineEdit:focus { /* border-bottom: 1px solid " + QString::fromStdString(mainColorStr) + "; */ }");
-    searchSong->setGeometry(15, 430, 775, 25);
-    searchSong->setPlaceholderText("Search song");
+    searchSong->setGeometry(15, 430, 775, 30);
+    searchSong->setPlaceholderText("\uf002 Search song");
     searchSong->show();
 
     songPosition = new QLabel(this);
@@ -368,6 +367,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect (searchSong, SIGNAL(textChanged(const QString &)), this, SLOT(search(const QString &)));
 
+    connect (playlistsBar, &QTabBar::tabBarClicked, [=](int index) {
+        if (playlistsBar->tabText(index) == "\uf067")
+        {
+            createPlaylist();
+        }
+    });
     connect (playlistsBar, SIGNAL (customContextMenuRequested(const QPoint&)), this, SLOT(playlistsBarContextMenu (const QPoint&)));
     connect (playlistsBar, SIGNAL (currentChanged(int)), this, SLOT(changeCurrentPlaylist (int)));
     connect (playlistsBar, SIGNAL (tabCloseRequested(int)), this, SLOT(removePlaylist (int)));
@@ -754,6 +759,8 @@ void MainWindow::drawAllPlaylists ()
     {
         playlistsBar->addTab(playlist.first);
     }
+
+    playlistsBar->addTab("\uf067");
 }
 void MainWindow::searchInPlaylist(const QString & text) {
     if (text != "")
@@ -785,7 +792,6 @@ void MainWindow::drawPlaylist() {
         QString name = playlist[i].getName();
 
         songItem->setData(Qt::UserRole, i);
-        // songItem->setText(QString::number(i + 1) + ". " + name);
         songItem->setText(name);
 
         playlistWidget->addItem(songItem);
@@ -802,12 +808,21 @@ void MainWindow::setTitle () {
     songTitle->setText(name);
 }
 void MainWindow::changeCurrentPlaylist (int index) {
-    if (playlistsBar->tabText(index) == "") {
+    QString tabContent = playlistsBar->tabText(index);
+
+    if (tabContent == "") {
         playlistsBar->removeTab(index);
         return;
     }
 
-    if (playlists.find(playlistsBar->tabText(index)) == playlists.end())
+    if (tabContent == "\uF067")
+    {
+        index--;
+        playlistsBar->setCurrentIndex(index);
+        return;
+    }
+
+    if (playlists.find(tabContent) == playlists.end() && tabContent != "\uF067")
         return;
 
     searchSong->setText("");
@@ -819,7 +834,6 @@ void MainWindow::changeCurrentPlaylist (int index) {
     currentPlaylistName = playlistsBar->tabText(index);
 
     drawPlaylist();
-    // drawAllPlaylists();
 }
 
 void MainWindow::playlistsBarContextMenu (const QPoint& point) {
@@ -856,6 +870,8 @@ void MainWindow::setActive(QListWidgetItem * item) {
 }
 void MainWindow::setActive (int index) {
     clearPrerenderedFft();
+
+    songInfo->setText("Genre, 44.1k MP3");
 
     paused = true;
     pauseBtn->setText("\uf04c"); // Set symbol to pause
@@ -1040,7 +1056,7 @@ void MainWindow::updateTime() {
         if (songPos == getPosition())
             counter++;
 
-        // if counter value equals 3 (3 frames passed) and position still same, then
+        // if counter value equals 5 (5 frames (~80ms) passed) and position still same, then
         // the scrolling stopped, so continue playing (if track not paused) and reset counter
         if (counter >= 5 && songPos == getPosition() && paused) {
             BASS_ChannelPlay(channel, false);
@@ -1150,7 +1166,8 @@ void MainWindow::paintEvent(QPaintEvent * event) {
                 p.fillPath(path, QColor (192, 192, 192));
             p.drawPath(path);
         }
-    } else {
+    }
+    else {
         for (int i = 0; i < 140; i++) {
             QPainter p(this);
             p.setRenderHint(QPainter::Antialiasing);
@@ -1180,22 +1197,28 @@ void MainWindow::prerenderFft (QString file)
     QWORD len = BASS_ChannelGetLength(tmp, BASS_POS_BYTE); // the length in bytes
     float time = BASS_ChannelBytes2Seconds(tmp, len);      // the length in seconds
 
-    int avgLen = 16;
+    int avgLen = 1024;
 
     BASS_ChannelSetAttribute(tmp, BASS_ATTRIB_VOL, 0);
     BASS_ChannelPlay(tmp, FALSE);
 
     float fft[1024];
-    float tempfft[300];
+    float tempfft[140];
     for (float i = 0; i < time; i+= time / 140, k++)
     {
         BASS_ChannelGetData(tmp, fft, BASS_DATA_FFT2048);
 
         float max = 0;
+        int q = 0;
         for (int j = 1; j <= avgLen; j++)
-            max += sqrt(fft[j]) * 3 * 40 - 4;
-
-        max /= avgLen;
+        {
+            if (sqrt(fft[j]) * 3 * 100 - 4 > 20)
+            {
+                max += sqrt(fft[j]) * 3 * 40 - 4;
+                q++;
+            }
+        }
+        max /= q;
         max *= 3;
 
         if (max <= 3) max = 3;
@@ -1208,40 +1231,23 @@ void MainWindow::prerenderFft (QString file)
 
     BASS_StreamFree(tmp);
 
-    /*
-    bool isEnded;
-    k = 1;
-
-    do {
-       isEnded = true;
-
-       for (int i = 0; i < k; i++)
-       {
-           if (tempfft[i] > prerenderedFft[i]) {
-               isEnded = false;
-               prerenderedFft[i]++;
-           }
-           if (tempfft[i] == prerenderedFft[i]) k++;
-       }
-
-       std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    } while (!isEnded && k < 300);
-    */
-
-    for (int i = 0; i < 300; i++)
+    for (int i = 0; i < 140; i++)
     {
         do {
-            prerenderedFft[i]++;
+            int tmp = tempfft[i] / 10;
+            if (tmp < 1) tmp = 1;
+
+            prerenderedFft[i] += tmp;
+
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (this->playlists[playingSongPlaylist][currentID].path != file) return;
+
         } while (prerenderedFft[i] < tempfft[i]);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
         if (this->playlists[playingSongPlaylist][currentID].path != file) return;
     }
-
-    qDebug() << file;
 
     writeLog("Prerendering fft ended");
 }
@@ -1315,6 +1321,7 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
         }
         else if (event->button() == Qt::RightButton) {
             liveSpec = !liveSpec;
+
             writeLog((liveSpec) ? "Live spectrum enabled" : "Live spectrum disabled");
         }
     }
@@ -1334,6 +1341,9 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
     double new_time = getPosition();
 
     if (mouseX > 50 && mouseX < 750 && mouseY > 350 && mouseY < 390) {
+        // Pause channel while scrolling (for better perfomance)
+        BASS_ChannelPause(channel);
+
         if (event->angleDelta().ry() < 0)
         {
             new_time -= 3;
@@ -1341,11 +1351,10 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
         else if (event->angleDelta().ry() > 0) {
             new_time += 3;
         }
-    }
 
-    // Pause channel while scrolling (for better perfomance)
-    BASS_ChannelPause(channel);
-    BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+
+        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+    }  
 }
 void MainWindow::settings () {
     bool * colorChangePtr = &colorChanging;
@@ -1419,7 +1428,7 @@ void MainWindow::reloadStyles () {
                                 "QTabBar::scroller { width: 40px; }" \
                                 "QTabBar::close-button { padding: 4px; image: url(images/close.png); }" \
                                 "QTabBar QToolButton { border: 0px solid black; color: silver; background-color: #101010; }" \
-                                "QTabBar::tab { height: 25px; background-color: #101010; padding: 0px 20px; min-width: 80px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #101010; color: silver; }" \
+                                "QTabBar::tab { height: 25px; background-color: #101010; padding: 0px 20px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #101010; color: silver; }" \
                                 "QTabBar::tear { border: 0px solid black; }");
 
     if (shuffle) shuffleBtn->setStyleSheet("font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + ";");
@@ -1481,7 +1490,7 @@ void MainWindow::colorChange()
     reloadStyles ();
 }
 
-// Web Socket Functions
+//           --- Web Socket Functions ---
 void MainWindow::remoteDeviceConnect () {
     qDebug() << "New connection";
 

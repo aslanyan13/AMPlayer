@@ -186,6 +186,7 @@ private:
     QTabBar * playlistsBar;
 
     QLabel * songTitle;
+    QLabel * songInfo;
     QLabel * songDuration;
     QLabel * songPosition;
     QLabel * timecode;

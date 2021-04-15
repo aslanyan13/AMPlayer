@@ -40,8 +40,6 @@ void equalizerWindow::init() {
     {
         float start = clock();
 
-        qDebug() << "---------------------------------";
-
         BASS_BFX_PEAKEQ bfx;
         fx[i] = BASS_ChannelSetFX(*channel, BASS_FX_BFX_PEAKEQ, 0);
 
@@ -57,8 +55,6 @@ void equalizerWindow::init() {
 
         BASS_FXSetParameters(fx[i], &bfx);
 
-        qDebug().nospace() << "Elapsed: " << clock() - start << "ms";
-
         connect (freqs[i], &QSlider::valueChanged, [=](int value) {
             BASS_BFX_PEAKEQ bfx;
             bfx.fCenter = freq_values[i];
@@ -67,8 +63,6 @@ void equalizerWindow::init() {
             bfx.fGain = value;
             BASS_FXSetParameters(fx[i], &bfx);
         });
-
-        qDebug().nospace() << "Elapsed: " << clock() - start << "ms";
     }
 
     connect (tempo, &QSlider::valueChanged, [=](int value) {
