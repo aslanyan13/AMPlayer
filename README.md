@@ -1,6 +1,7 @@
 # AMPlayer
 Aslanyan Music Player (Graduation work)
 
-## Screenshots:
-![Снимок159](https://user-images.githubusercontent.com/31659985/113491068-0f491e00-94df-11eb-9866-24bc9a1a410b.PNG)
+## Screenshots:                                                                                                             
+![bandicam 2021-04-15 20-27-28-140](https://user-images.githubusercontent.com/31659985/114904751-3b429880-9e29-11eb-8718-50b95c7054d3.jpg)                
+
 
