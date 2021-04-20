@@ -43,8 +43,6 @@ void equalizerWindow::init() {
         BASS_BFX_PEAKEQ bfx;
         fx[i] = BASS_ChannelSetFX(*channel, BASS_FX_BFX_PEAKEQ, 0);
 
-        qDebug().nospace() << QString::number(i) + " | Elapsed: " << clock() - start << "ms";
-
         // qDebug() << BASS_ErrorGetCode();
 
         bfx.fBandwidth = 0.2f;

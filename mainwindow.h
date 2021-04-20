@@ -12,6 +12,7 @@
 #include <QInputDialog>
 #include <QCloseEvent>
 #include <QMouseEvent>
+#include <QToolTip>
 #include <QMouseEventTransition>
 #include <QMessageBox>
 #include <QFileDialog>
