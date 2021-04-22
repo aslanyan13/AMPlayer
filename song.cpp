@@ -7,9 +7,12 @@ Song::Song()
 
 double Song::getDuration () {
     HSTREAM stream = BASS_StreamCreateFile(false, path.toStdWString().c_str(), 0, 0, 0);
-
     QWORD len = BASS_ChannelGetLength(stream, 0); // the length in bytes
-    return BASS_ChannelBytes2Seconds(stream, len); // the length in seconds
+    double dur = BASS_ChannelBytes2Seconds(stream, len);
+
+    BASS_StreamFree(stream);    // Clear memory
+
+    return dur; // the length in seconds
 }
 QString Song::getFormat () {
     return suffix;

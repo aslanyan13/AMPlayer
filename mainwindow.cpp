@@ -392,7 +392,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (playlistsBar, SIGNAL (customContextMenuRequested(const QPoint&)), this, SLOT(playlistsBarContextMenu (const QPoint&)));
     connect (playlistsBar, SIGNAL (currentChanged(int)), this, SLOT(changeCurrentPlaylist (int)));
     connect (playlistsBar, SIGNAL (tabCloseRequested(int)), this, SLOT(removePlaylist (int)));
-
     connect (playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
     connect (playlistWidget->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)), this, SLOT(rowsMoved(QModelIndex, int, int, QModelIndex, int)));
 
@@ -450,6 +449,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow()
 {
+    remove("cover.png");
+
     QString uptime = QString::fromStdString(seconds2string((clock() - starttime) / 1000));
     writeLog("Exiting...");
     writeLog("Uptime: " + uptime + " (" + QString::number(clock() - starttime) + "ms)");
@@ -806,7 +807,6 @@ void MainWindow::drawPlaylist() {
     for (int i = 0; i < (int)playlist.size(); i++)
     {
         QListWidgetItem * songItem = new QListWidgetItem(playlistWidget);
-        QString path = playlist[i].path;
         QString name = playlist[i].getName();
 
         songItem->setData(Qt::UserRole, i);

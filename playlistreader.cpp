@@ -35,7 +35,26 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
                 if (xmlReader.name() == "song" && attribute_value != "")
                 {
                     Song temp(xmlReader.readElementText());
-                    temp.setNameFromPath();
+
+                    TagLib::FileRef f(temp.path.toStdWString().c_str());
+
+                    wstring artist = L"", title = L"";
+
+                    // If file not load failed
+                    if (!f.isNull()) {
+                        artist = f.tag()->artist().toCWString();
+                        title = f.tag()->title().toCWString();
+                    }
+
+                    if (artist == L"") {
+                        artist = L"Unknown Artist";
+                    }
+
+                    if (title == L"") {
+                        temp.setNameFromPath();
+                    } else {
+                        temp.setName(QString::fromStdWString(artist) + " - " + QString::fromStdWString(title));
+                    }
 
                     playlists[attribute_value].push_back(temp);
                 }

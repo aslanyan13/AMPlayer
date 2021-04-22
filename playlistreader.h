@@ -10,6 +10,12 @@
 #include <iostream>
 #include <vector>
 
+// Taglib library
+#include <taglib/taglib.h>
+#include <taglib/tfile.h>
+#include <taglib/fileref.h>
+#include <taglib/tpropertymap.h>
+
 #include "song.h"
 #include "fifo_map.hpp"
 
