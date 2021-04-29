@@ -99,7 +99,15 @@ settingsWindow::settingsWindow(QWidget *parent) : QWidget(parent), ui(new Ui::se
     });
 
     tabs->addTab(tab1, tr("Theme"));
-    tabs->setStyleSheet("color: silver");
+    tabs->tabBar()->setDrawBase(false);
+    tabs->setStyleSheet("QTabWidget { height: 25px; font-size: 12px; border: 0px solid silver; background-color: #101010; color: silver; }" \
+                      "QTabWidget::tab:selected { background-color: #141414; color: silver; border: 0px solid silver;}" \
+                      "QTabWidget::tab:last { border-right: 0px solid #101010; } " \
+                      "QTabWidget::scroller { width: 40px; }" \
+                      "QTabWidget::close-button { padding: 4px; image: url(images/close.png); }" \
+                      "QTabWidget QToolButton { border: 0px solid black; color: silver; background-color: #101010; }" \
+                      "QTabWidget::tab { height: 25px; background-color: #101010; padding: 0px 20px; max-width: 150px; border: 0px solid silver; border-bottom: 1px solid silver; border-right: 4px solid #101010; color: silver; }" \
+                      "QTabWidget::tear { border: 0px solid black; }");
     tabs->setGeometry(10, 20, 380, 230);
 
     tabs->show();
@@ -116,18 +124,6 @@ void settingsWindow::init()
     int id = QFontDatabase::addApplicationFont(":/Font Awesome 5 Pro Solid.ttf");
     QString family = QFontDatabase::applicationFontFamilies(id).at(0);
     QFont fontAwesome(family);
-
-    /*
-    closeBtn = new QPushButton(this);
-    closeBtn->setFont(fontAwesome);
-    closeBtn->setGeometry(360, 10, 30, 30);
-    closeBtn->setStyleSheet("font-size: 24px; border: 0px solid silver; background-color: #141414; color: " + tr(mainColorStr->c_str()) + ";");
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setText("\uf00d");
-    closeBtn->show();
-
-    connect (closeBtn, SIGNAL(clicked()), this, SLOT(slot_close()));
-    */
 }
 
 void settingsWindow::reloadStyles() {

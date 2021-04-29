@@ -29,7 +29,7 @@ QImage applyEffectToImage(QImage src, QGraphicsEffect *effect, int extent = 0)
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
-{
+{   
     removeControlServer = new QWebSocketServer("Remote Control Server", QWebSocketServer::NonSecureMode, this);
 
     httpServer = new QTcpServer(this);
@@ -83,8 +83,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     ui->setupUi(this);
 
-    // QApplication::setStyleSheet("QToolTip { background-color: #101010; color: silver; font-size: 12px; border: 1px solid silver; }");
-
     // Window settings
     this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
     this->setStyleSheet("QMainWindow { background-color: #101010; }"
@@ -124,31 +122,36 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     windowTitle = new QLabel(titlebarWidget);
     windowTitle->setGeometry(0, 3, 800, 30);
     windowTitle->setAlignment(Qt::AlignCenter);
+    QFont font = windowTitle->font();
+    font.setLetterSpacing(QFont::AbsoluteSpacing, 1);
+    windowTitle->setFont(font);
     windowTitle->setText("AMPlayer");
 
     QPushButton * menuBtn = new QPushButton(this);
+    menuBtn->setFont(fontAwesome);
     menuBtn->setToolTip("Menu");
     menuBtn->setGeometry(10, 10, 15, 15);
-    menuBtn->setStyleSheet("QPushButton { font-size: 15px; border: 0px solid silver; background-color: #101010; color: gray; }"
-                           "QToolTip { background-color: #101010; color: silver; font-size: 12px; border: 1px solid silver; }");
+    menuBtn->setStyleSheet("QPushButton { font-size: 16px; border: 0px solid silver; background-color: #101010; color: gray; }");
     menuBtn->setCursor(Qt::PointingHandCursor);
-    menuBtn->setText(QString::fromStdWString(L"\u2b24"));
+    menuBtn->setText(QString::fromStdWString(L"\uf0c9"));
     menuBtn->show();
 
     closeBtn = new QPushButton(this);
+    closeBtn->setFont(fontAwesome);
     closeBtn->setToolTip("Close");
-    closeBtn->setGeometry(775, 10, 15, 15);
-    closeBtn->setStyleSheet("QPushButton { font-size: 15px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
+    closeBtn->setGeometry(775, 11, 15, 15);
+    closeBtn->setStyleSheet("QPushButton { font-size: 18px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setText(QString::fromStdWString(L"\u2b24"));
+    closeBtn->setText(QString::fromStdWString(L"\uf00d"));
     closeBtn->show();
 
     minimizeBtn = new QPushButton(this);
+    minimizeBtn->setFont(fontAwesome);
     minimizeBtn->setToolTip("Minimize");
     minimizeBtn->setGeometry(750, 10, 15, 15);
-    minimizeBtn->setStyleSheet("QPushButton { font-size: 15px; border: 0px solid silver; background-color: #101010; color: silver; }");
+    minimizeBtn->setStyleSheet("QPushButton { font-size: 13px; border: 0px solid silver; background-color: #101010; color: silver; }");
     minimizeBtn->setCursor(Qt::PointingHandCursor);
-    minimizeBtn->setText(QString::fromStdWString(L"\u2b24"));
+    minimizeBtn->setText(QString::fromStdWString(L"\uf2d1"));
     minimizeBtn->show();
 
     pauseBtn = new QPushButton(this);
@@ -294,6 +297,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 
     playlistWidget = new QListWidget (this);
+    playlistWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     playlistWidget->setMouseTracking(true);
     playlistWidget->installEventFilter(this);
 
@@ -325,6 +329,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     playlistWidget->show();
 
     searchSong = new QLineEdit(this);
+    searchSong->setMouseTracking(true);
     searchSong->setFont(fontAwesome);
     searchSong->setStyleSheet("QMenu { background-color: #101010; color: silver; }"
                               "QLineEdit { padding: 0px 20px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid #101010; background-color: #141414; color: silver; }" \
@@ -392,6 +397,35 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (playlistsBar, SIGNAL (customContextMenuRequested(const QPoint&)), this, SLOT(playlistsBarContextMenu (const QPoint&)));
     connect (playlistsBar, SIGNAL (currentChanged(int)), this, SLOT(changeCurrentPlaylist (int)));
     connect (playlistsBar, SIGNAL (tabCloseRequested(int)), this, SLOT(removePlaylist (int)));
+
+    connect (playlistWidget, &QListWidget::customContextMenuRequested, [=](const QPoint& point) {
+        int itemIndex = playlistWidget->itemAt(point)->data(Qt::UserRole).toInt();
+        qDebug() << itemIndex;
+
+        QPoint globalPos = playlistWidget->mapToGlobal(point);
+
+        QMenu myMenu;
+        myMenu.setFont(fontAwesome);
+        myMenu.setStyleSheet("background-color: #101010; color: silver");
+        myMenu.addAction("Play");
+        myMenu.addSeparator();
+        myMenu.addAction("Edit");
+        myMenu.addAction("Remove");
+
+        QAction * selectedItem = myMenu.exec(globalPos);
+
+        if (selectedItem)
+        {
+            if (selectedItem->text() == "Play")
+                setActive(itemIndex);
+            if (selectedItem->text() == "Remove")
+                removeFile();
+        }
+        else
+        {
+            // nothing was chosen
+        }
+    });
     connect (playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
     connect (playlistWidget->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)), this, SLOT(rowsMoved(QModelIndex, int, int, QModelIndex, int)));
 
@@ -402,10 +436,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (forwardBtn, SIGNAL(clicked()), this, SLOT(forward()));
     connect (backwardBtn, SIGNAL(clicked()), this, SLOT(backward()));
     connect (pauseBtn, SIGNAL(clicked()), this, SLOT(pause()));
+    connect (volumeBtn, &QPushButton::clicked, [=]() {
+        muted = !muted;
+
+        if (muted) {
+            BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, 0);
+            volumeBtn->setText("\uf026");
+        } else {
+            BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+            volumeBtn->setText("\uf028");
+        }
+    });
     connect (repeatBtn, SIGNAL(clicked()), this, SLOT(changeRepeat()));
     connect (shuffleBtn, SIGNAL(clicked()), this, SLOT(changeShuffle()));
     connect (audio3dBtn, SIGNAL(clicked()), this, SLOT(audio3D()));
     connect (equoBtn, SIGNAL(clicked()), this, SLOT(equalizer()));
+    connect (timerBtn, SIGNAL(clicked()), this, SLOT(trackTimer()));
 
     connect (remoteBtn, &QPushButton::clicked, [=]() {
 
@@ -451,7 +497,7 @@ MainWindow::~MainWindow()
 {
     remove("cover.png");
 
-    QString uptime = QString::fromStdString(seconds2string((clock() - starttime) / 1000));
+    QString uptime = seconds2qstring((clock() - starttime) / 1000);
     writeLog("Exiting...");
     writeLog("Uptime: " + uptime + " (" + QString::number(clock() - starttime) + "ms)");
 
@@ -466,14 +512,19 @@ MainWindow::~MainWindow()
 
 void MainWindow::menuContext () {
     QMenu myMenu;
-    myMenu.setStyleSheet("background-color: #101010; color: silver");
+    myMenu.setStyleSheet("background-color: #121212; color: silver");
 
-    myMenu.addAction("Open file(s)");
+    myMenu.addAction("Open File(s)");
     myMenu.addAction("Open Folder");
+    myMenu.addAction("Open File by URL");
+    myMenu.addAction("Add Online Radio");
     myMenu.addSeparator();
     myMenu.addAction("Settings");
+    myMenu.addAction("About AMPlayer");
+    myMenu.addSeparator();
+    myMenu.addAction("Exit");
 
-    QAction * selectedItem = myMenu.exec(this->mapToGlobal(QPoint(20, 20)));
+    QAction * selectedItem = myMenu.exec(QCursor::pos());
 
     if (selectedItem)
     {
@@ -485,6 +536,9 @@ void MainWindow::menuContext () {
         }
         if (selectedItem->text() == "Settings") {
             settings();
+        }
+        if (selectedItem->text() == "Exit") {
+            slot_close();
         }
     }
 }
@@ -543,7 +597,7 @@ bool MainWindow::openFile ()
 
     drawPlaylist();
     if (playlist.size() == 1)
-        setActive (0);
+        (0);
 
     return true;
 }
@@ -592,6 +646,8 @@ void MainWindow::removeFile() {
         clearPrerenderedFft();
         songPosition->setText("00:00");
         songDuration->setText("00:00");
+        coverLoaded = false;
+        cover = QImage (":/Images/cover-placeholder.png");
     }
 
     playlist.erase(playlist.begin() + index);
@@ -813,7 +869,7 @@ void MainWindow::drawPlaylist() {
         songItem->setText(name);
 
         songItem->setToolTip("Name: " + name +
-                             "\nDuration: " + QString::fromStdString(seconds2string(playlist[i].getDuration())) +
+                             "\nDuration: " + seconds2qstring(playlist[i].getDuration()) +
                              "\nFormat: " + playlist[i].getFormat());
 
         playlistWidget->addItem(songItem);
@@ -890,7 +946,7 @@ void MainWindow::playlistsBarContextMenu (const QPoint& point) {
 void MainWindow::setActive(QListWidgetItem * item) {
     setActive (playlistWidget->currentRow());
 }
-void MainWindow::setActive (int index) {
+void MainWindow::setActive(int index) {
     clearPrerenderedFft();
 
     songInfo->setText("Genre, 44.1k MP3");
@@ -925,23 +981,38 @@ void MainWindow::setActive (int index) {
     if (channel != NULL)
         BASS_StreamFree(channel);
 
-    channel = BASS_StreamCreateFile(FALSE, path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
-    channel = BASS_FX_TempoCreate(channel, NULL);
+    // channel = BASS_StreamCreateFile(FALSE, path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+    // channel = BASS_FX_TempoCreate(channel, NULL);
 
-    equalizerWin->channel = &channel;
-    equalizerWin->init();
+    // equalizerWin->channel = &channel;
+    // equalizerWin->init();
+
+    channel = BASS_StreamCreateFile(FALSE, path.toStdWString().c_str(), 0, 0, 0);
 
     auto func = std::bind(&MainWindow::prerenderFft, this, path);
+    auto coverFadeIn = std::bind(&MainWindow::coverBackgroundPopup, this);
 
     std::thread thr(func);
     thr.detach();
 
-    BASS_ChannelPlay(channel, false);
-    BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+    std::thread thr2 (coverFadeIn);
+    thr2.detach();
 
-    QString pos = QString::fromStdString(seconds2string(getPosition()));
+    std::thread thr3([&]() {
+        for (int i = 0; i <= (volume * 100); i++)
+        {
+            BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, i / 100.0f);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
+    thr3.detach();
+
+    BASS_ChannelPlay(channel, false);
+    // BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+
+    QString pos = seconds2qstring(getPosition());
     songPosition->setText(pos);
-    QString len = QString::fromStdString(seconds2string(getDuration()));
+    QString len = seconds2qstring(getDuration());
     songDuration->setText(len);
 
     playlistWidget->setCurrentRow(index);
@@ -1005,15 +1076,29 @@ void MainWindow::pause()
         writeLog("Song resumed");
         BASS_ChannelPlay(channel, false);
         pauseBtn->setText("\uf04c"); // Set symbol to pause
+
+        auto func = std::bind(&MainWindow::coverBackgroundPopup, this);
+
+        std::thread thr(func);
+        thr.detach();
     }
     else {
         writeLog("Song paused");
         BASS_ChannelPause(channel);
         pauseBtn->setText("\uf04b"); // Set symbol to play
+
+        auto func = std::bind(&MainWindow::coverBackgroundHide, this);
+
+        std::thread thr(func);
+        thr.detach();
     }
 }
 void MainWindow::changeVolume (int vol)
 {
+    if (muted)
+    {
+        volumeBtn->setText("\uf028");
+    }
     volumeSlider->setValue(vol);
     volume = vol / 100.0f;
     writeLog("Volume changed to: " + QString::number(vol));
@@ -1050,27 +1135,35 @@ void MainWindow::changeShuffle () {
     }
 }
 
-string MainWindow::seconds2string (float seconds) {
+QString MainWindow::seconds2qstring (float seconds) {
     int hours = (seconds > 3600) ? (int)seconds / 3600 : 0;
     int minutes = (seconds > 60) ? ((int)seconds - hours * 3600) / 60 : 0;
     int secs = (int)seconds % 60;
 
-    string result = "";
+    QString result = "";
     if (hours != 0)
     {
         if (hours < 10) result += "0";
-        result += to_string (hours);
+        result += QString::number (hours);
         result += ":";
     }
 
     if (minutes < 10) result += "0";
-    result += to_string (minutes);
+    result += QString::number (minutes);
     result += ":";
 
     if (secs < 10) result += "0";
-    result += to_string (secs);
+    result += QString::number (secs);
 
     return result;
+}
+double MainWindow::qstring2seconds (QString time) {
+    if (time.count(':') == 2) {
+        int minutes = time.mid(0, time.indexOf(':')).toInt();
+        int seconds = time.mid(time.indexOf(':') + 1).toInt();
+
+        return minutes * 60.0 + seconds;
+    }
 }
 
 void MainWindow::updateTime() {
@@ -1097,7 +1190,7 @@ void MainWindow::updateTime() {
         else
             songPos = getPosition();
 
-        QString pos = QString::fromStdString(seconds2string(getPosition()));
+        QString pos = seconds2qstring(getPosition());
         songPosition->setText(pos);
 
         if (getPosition() >= getDuration())
@@ -1151,13 +1244,14 @@ void MainWindow::paintEvent(QPaintEvent * event) {
         painter.setBrush(brush);
         painter.drawRoundedRect(275, 30, 250, 250, 10, 10);
 
-        QRadialGradient gradient(400, 155, 180);
-        gradient.setColorAt(0, QColor(20, 20, 20, 200));
-        gradient.setColorAt(1, QColor(20, 20, 20, 255));
+        QRadialGradient gradient(400, 155, 200);
+        gradient.setColorAt(0, QColor(16, 16, 16, coverBgOpacity));
+        gradient.setColorAt(1, QColor(16, 16, 16, 255));
 
         QBrush brush2(gradient);
+        painter.setBrush(brush2);
 
-        painter.setBrush(QBrush(QColor(16, 16, 16, 230)));
+        // painter.setBrush(QBrush(QColor(16, 16, 16, coverBgOpacity)));
         painter.drawRect(275, 30, 250, 250);
     }
 
@@ -1229,7 +1323,7 @@ void MainWindow::prerenderFft (QString file)
     QWORD len = BASS_ChannelGetLength(tmp, BASS_POS_BYTE); // the length in bytes
     float time = BASS_ChannelBytes2Seconds(tmp, len);      // the length in seconds
 
-    int avgLen = 1024;
+    int avgLen = 512;
 
     BASS_ChannelSetAttribute(tmp, BASS_ATTRIB_VOL, 0);
     BASS_ChannelPlay(tmp, FALSE);
@@ -1244,14 +1338,14 @@ void MainWindow::prerenderFft (QString file)
         int q = 0;
         for (int j = 1; j <= avgLen; j++)
         {
-            if (sqrt(fft[j]) * 3 * 100 - 4 > 20)
+            if (sqrt(fft[j]) * 3 * 100 - 4 > 5)
             {
                 max += sqrt(fft[j]) * 3 * 40 - 4;
                 q++;
             }
         }
         max /= q;
-        max *= 3;
+        max *= 10;
 
         if (max <= 3) max = 3;
         else if (max > 40) max = 40;
@@ -1272,13 +1366,18 @@ void MainWindow::prerenderFft (QString file)
             prerenderedFft[i] += tmp;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            if (this->playlists[playingSongPlaylist][currentID].path != file) return;
-
+            if (this->playlists[playingSongPlaylist][currentID].path != file || getPosition() == 0) {
+                clearPrerenderedFft();
+                return;
+            }
         } while (prerenderedFft[i] < tempfft[i]);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
-        if (this->playlists[playingSongPlaylist][currentID].path != file) return;
+        if (this->playlists[playingSongPlaylist][currentID].path != file || getPosition() == 0) {
+            clearPrerenderedFft();
+            return;
+        }
     }
 
     writeLog("Prerendering fft ended");
@@ -1294,7 +1393,7 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
         timecode->repaint();
         timecode->clear();
         timecode->setGeometry (mouseX + 10, mouseY + 10, 50, 20);
-        timecode->setText(QString::fromStdString(seconds2string(((mouseX - 50) / (700.0f)) * getDuration())));
+        timecode->setText(seconds2qstring(((mouseX - 50) / (700.0f)) * getDuration()));
         timecode->show();
     }
     else {
@@ -1312,9 +1411,11 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
     if (mouseX >= 15 && mouseX <= 790 && mouseY >= 430 && mouseY <= 620)
     {
         playlistWidget->raise();
+        searchSong->raise();
     }
     else {
         playlistWidget->lower();
+        searchSong->lower();
     }
 
     if (volumeBtn->underMouse())
@@ -1349,12 +1450,62 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             double newtime = ((mouseX - 50) / (700.0f)) * getDuration();
 
             BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, newtime), BASS_POS_BYTE);
-            writeLog("Song position changed to: " + QString::fromStdString(seconds2string(newtime)) + " (" + QString::number(newtime) + "s)");
+            writeLog("Song position changed to: " + seconds2qstring(newtime) + " (" + QString::number(newtime) + "s)");
         }
         else if (event->button() == Qt::RightButton) {
-            liveSpec = !liveSpec;
+            timecode->hide();
 
-            writeLog((liveSpec) ? "Live spectrum enabled" : "Live spectrum disabled");
+            QMenu myMenu;
+            myMenu.setStyleSheet("background-color: #121212; color: silver");
+            myMenu.addAction("Jump to...");
+            myMenu.addAction("Make loop (A-B)");
+            myMenu.setMouseTracking(true);
+            QAction * action = new QAction("Live spectrum", this);
+            action->setCheckable(true);
+            action->setChecked(liveSpec);
+            myMenu.addAction(action);
+
+            // myMenu.addAction("Live spectrum");
+
+            QAction * selectedItem = myMenu.exec(mapToGlobal(QPoint(mouseX, mouseY)));
+
+            if (selectedItem)
+            {
+                if (selectedItem->text() == "Jump to...")
+                {
+                    bool ok;
+                    QString pos = QInputDialog::getText(this, tr("Jump to position"),  tr("Jump to position:"), QLineEdit::Normal, "00:00", &ok);
+
+                    if (ok)
+                    {
+                        double time = qstring2seconds(pos);
+
+                        qDebug() << pos;
+                        qDebug() << time;
+
+                        if (time > getDuration())
+                        {
+                            QMessageBox msgBox;
+                            msgBox.setWindowTitle("Error");
+                            msgBox.setText("Incorrect position!");
+                            msgBox.setStyleSheet("background-color: #101010; color: silver;");
+                            msgBox.exec();
+                        } else {
+                            songPosition->setText(pos);
+                            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, time), BASS_POS_BYTE);
+                        }
+                    }
+                }
+                if (selectedItem->text() == "Live spectrum")
+                {
+                    liveSpec = !liveSpec;
+                    writeLog((liveSpec) ? "Live spectrum enabled" : "Live spectrum disabled");
+                }
+            }
+            else
+            {
+                // nothing was chosen
+            }
         }
     }
 

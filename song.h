@@ -44,6 +44,9 @@ public:
         QMimeDatabase db;
         QMimeType * mime = new QMimeType(db.mimeTypeForFile(p, QMimeDatabase::MatchContent));
         suffix = mime->preferredSuffix();
+        suffix = suffix.toUpper();
+
+        if (suffix == "") suffix = "Unknown";
 
         delete mime;
     };

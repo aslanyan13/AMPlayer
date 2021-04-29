@@ -10,6 +10,7 @@
 #include <QSlider>
 #include <QList>
 #include <QTabWidget>
+#include <QTabBar>
 #include <QFontDatabase>
 #include <QHBoxLayout>
 #include <QColor>

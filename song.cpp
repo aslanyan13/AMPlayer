@@ -20,7 +20,7 @@ QString Song::getFormat () {
 QImage Song::getCover() {
     QImage cover;
 
-    if (this->getFormat() == "mp3") {
+    if (this->getFormat() == "MP3") {
         MPEG::File * f = new MPEG::File(path.toStdWString().c_str());
         ID3v2::Tag * id3v2tag = f->ID3v2Tag();
         TagLib::ID3v2::AttachedPictureFrame * PicFrame = nullptr;
@@ -34,35 +34,51 @@ QImage Song::getCover() {
                 {
                     PicFrame = (TagLib::ID3v2::AttachedPictureFrame *)(frameList[i]);
 
-                    if (PicFrame->type() == PicFrame->FrontCover)
+                    if (PicFrame->picture().size() == 0)
+                        continue;
+
+                    if (remove("cover.png") != 0)
+                        qDebug() << "Cover delete error!";
+
+                    ofstream file("cover.png", ios::out | ios::binary | ofstream::trunc);
+
+
+                    file.write(PicFrame->picture().data(), PicFrame->picture().size());
+                    file.close();
+
+                    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+                    ULONG_PTR gdiplusToken;
+
+                    // Initialize GDI+.
+                    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+                    Gdiplus::Bitmap * bitmap = Gdiplus::Bitmap::FromFile(L"cover.png");
+
+                    HBITMAP handleToSliceRet = NULL;
+                    bitmap->GetHBITMAP(Gdiplus::Color(0, 0, 0), &handleToSliceRet);
+
+                    QPixmap pixmap = QtWin::fromHBITMAP(handleToSliceRet);
+                    cover = pixmap.toImage();
+
+                    QSize coverSize = cover.size();
+
+                    // Image cropping to make it square
+                    if (coverSize.width() > coverSize.height())
                     {
-                        if (remove("cover.png") != 0)
-                            qDebug() << "Cover delete error!";
-
-                        ofstream file("cover.png", ios::out | ios::binary | ofstream::trunc);
-                        file.write(PicFrame->picture().data(), PicFrame->picture().size());
-                        file.close();
-
-                        Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-                        ULONG_PTR gdiplusToken;
-
-                        // Initialize GDI+.
-                        GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-
-                        Gdiplus::Bitmap * bitmap = Gdiplus::Bitmap::FromFile(L"cover.png");
-
-                        HBITMAP handleToSliceRet = NULL;
-                        bitmap->GetHBITMAP(Gdiplus::Color(0, 0, 0), &handleToSliceRet);
-
-                        QPixmap pixmap = QtWin::fromHBITMAP(handleToSliceRet);
-                        cover = pixmap.toImage();
-
-                        DeleteObject(bitmap);
-                        DeleteObject(handleToSliceRet);
-
-                        delete bitmap;
-                        break;
+                        cover = cover.copy((coverSize.width() - coverSize.height()) / 2, 0, coverSize.height(), coverSize.height());
                     }
+                    if (coverSize.height() > coverSize.width())
+                    {
+                        cover = cover.copy(0, (coverSize.height() - coverSize.width()) / 2, coverSize.height(), coverSize.height());
+                    }
+
+                    qDebug() << cover.size();
+
+                    DeleteObject(bitmap);
+                    DeleteObject(handleToSliceRet);
+
+                    delete bitmap;
+                    break;
                 }
             }
         }

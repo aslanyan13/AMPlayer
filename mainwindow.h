@@ -34,6 +34,7 @@
 #include <QHBoxLayout>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsScene>
+#include <QCursor>
 
 // Qt WebSocket libs
 #include <QtWebSockets>
@@ -44,6 +45,7 @@
 #include <taglib/fileref.h>
 #include <taglib/tpropertymap.h>
 
+// C++ libs
 #include <iostream>
 #include <string>
 #include <vector>
@@ -52,9 +54,11 @@
 #include <chrono>
 #include <thread>
 
+// Bass header files
 #include "bass.h"
 #include "bass_fx.h"
 
+// Custom header files
 #include "song.h"
 #include "settingswindow.h"
 #include "playlistreader.h"
@@ -77,7 +81,7 @@ public:
     void reorderPlaylist();
     void reloadStyles();
 
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(QWidget * parent = nullptr);
     ~MainWindow();
 
 private slots:
@@ -91,6 +95,7 @@ private slots:
     void menuContext ();
     void playlistsBarContextMenu (const QPoint&);
     void changeCurrentPlaylist (int index);
+
     void setActive(QListWidgetItem *);
     void setActive(int index);
 
@@ -100,10 +105,10 @@ private slots:
     void forward();
     void pause();
     void changeVolume(int vol);
-    void updateTime();
-
     void changeRepeat ();
     void changeShuffle ();
+
+    void updateTime();
 
     void remoteDeviceConnect ();
     void getRemoteCommands (const QString & command);
@@ -111,7 +116,7 @@ private slots:
     QString getLocalAddress () {
         QList<QHostAddress> list = QNetworkInterface::allAddresses();
 
-        for(int nIter=0; nIter<list.count(); nIter++)
+        for (int nIter = 0; nIter<list.count(); nIter++)
         {
             if(!list[nIter].isLoopback())
                 if (list[nIter].protocol() == QAbstractSocket::IPv4Protocol && list[nIter].toString()[0] == '1')
@@ -120,6 +125,13 @@ private slots:
     }
 
     void settings ();
+    void trackTimer () {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Timer");
+        msgBox.setText("Timer will be added soon!");
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
+        msgBox.exec();
+    }
     void audio3D () {
         QMessageBox msgBox;
         msgBox.setWindowTitle("3D Audio");
@@ -128,6 +140,12 @@ private slots:
         msgBox.exec();
     }
     void equalizer () {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Equalizer");
+        msgBox.setText("Equalizer will be added soon!");
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
+        msgBox.exec();
+
         /*
         equalizerWin->raise();
         equalizerWin->setFocus();
@@ -162,11 +180,12 @@ private:
     bool logging = true;
     bool remoteServerEnabled = false;
     bool volumeSliderToggled = false;
-    bool trackChanged = false;
+    bool muted = false;
 
     float starttime;
     float volume = 1;
     float prerenderedFft[1024];
+    float coverBgOpacity = 255;
 
     int httpServerPort;
 
@@ -176,6 +195,7 @@ private:
 
     QString currentPlaylistName;
     QString playingSongPlaylist;
+
     vector <Song> playlist;
     int currentID = -1;
 
@@ -250,7 +270,8 @@ private:
     void mouseMoveEvent (QMouseEvent * event);
     void wheelEvent (QWheelEvent * event);
 
-    string seconds2string (float seconds);
+    QString seconds2qstring (float seconds);
+    double qstring2seconds (QString time);
 
     float getDuration () {
         QWORD len = BASS_ChannelGetLength(channel, BASS_POS_BYTE); // the length in bytes
@@ -288,5 +309,19 @@ private:
         out << "ERROR! " <<  name << " [" << now.toString("hh:mm:ss") << "]: " << text << "\n";
     }
 
+    void coverBackgroundPopup() {
+        for (int i = 255; i >= 180; i--)
+        {
+            this->coverBgOpacity = i;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
+    void coverBackgroundHide() {
+        for (int i = 180; i <= 255; i++)
+        {
+            this->coverBgOpacity = i;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
 };
 #endif // MAINWINDOW_H
