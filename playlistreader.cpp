@@ -46,14 +46,19 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
                         title = f.tag()->title().toCWString();
                     }
 
-                    if (artist == L"") {
+                    if (artist == L"" && title.find('-') == wstring::npos) {
                         artist = L"Unknown Artist";
+                    } else if (artist == L"" && title.find('-') != wstring::npos) {
+                        artist = L"";
                     }
 
                     if (title == L"") {
                         temp.setNameFromPath();
                     } else {
-                        temp.setName(QString::fromStdWString(artist) + " - " + QString::fromStdWString(title));
+                        if (artist != L"")
+                            temp.setName(QString::fromStdWString(artist) + " - " + QString::fromStdWString(title));
+                        else
+                            temp.setName(QString::fromStdWString(title));
                     }
 
                     playlists[attribute_value].push_back(temp);

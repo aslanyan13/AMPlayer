@@ -5,6 +5,7 @@
 #include <QString>
 #include <QPixmap>
 #include <QImage>
+#include <QFile>
 #include <QImageReader>
 #include <QMimeDatabase>
 #include <QMimeData>
@@ -36,19 +37,24 @@ class Song
 private:
     QString name = "";
     QString suffix = "";
+    float sampleRate;
+    float bitrate;
 public:
     QString path = "";
 
     Song();
     Song(QString p) : path(p) {
-        QMimeDatabase db;
-        QMimeType * mime = new QMimeType(db.mimeTypeForFile(p, QMimeDatabase::MatchContent));
-        suffix = mime->preferredSuffix();
+        // QMimeDatabase db;
+        // QMimeType * mime = new QMimeType(db.mimeTypeForFile(p, QMimeDatabase::MatchContent));
+        // suffix = mime->preferredSuffix();
+        // suffix = suffix.toUpper();
+
+        suffix = path.mid(path.lastIndexOf('.') + 1);
         suffix = suffix.toUpper();
 
         if (suffix == "") suffix = "Unknown";
 
-        delete mime;
+        // delete mime;
     };
 
     void setName (QString n) {
@@ -62,6 +68,17 @@ public:
         name = name.mid(0, right);
     }
 
+    QString getFileSizeMB () {
+        QFile file (path);
+        double size = file.size();
+        size /= 1024; // Kbytes
+        size /= 1024; // MBytes
+        size = int(size * 100) / 100.0f;
+
+        QString sizeStr = QString::number(size) + " MB";
+
+        return sizeStr;
+    }
     QString getName () {
         return name;
     }

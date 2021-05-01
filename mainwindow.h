@@ -44,6 +44,7 @@
 #include <taglib/tfile.h>
 #include <taglib/fileref.h>
 #include <taglib/tpropertymap.h>
+#include <taglib/audioproperties.h>
 
 // C++ libs
 #include <iostream>
@@ -193,11 +194,12 @@ private:
 
     QFile logfile;
 
-    QString currentPlaylistName;
-    QString playingSongPlaylist;
+    QString currentPlaylistName = "";
+    QString playingSongPlaylist = "";
 
     vector <Song> playlist;
     int currentID = -1;
+    int lastTrackID = -1;
 
     QLineEdit * searchSong;
 
