@@ -107,6 +107,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     settingsWin = new settingsWindow();
     equalizerWin = new equalizerWindow();
+    visualWin = new VisualizationWindow(nullptr, &channel);
 
     QHBoxLayout * horizontalLayout = new QHBoxLayout();
     horizontalLayout->setSpacing(0);
@@ -386,6 +387,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     volumeSlider->hide();
 
+    // If visualizations window closed
+    connect (visualWin->closeBtn, &QPushButton::pressed, [=]() {
+        qDebug() << "Closed!";
+        visualWindowOpened = false;
+        visualBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
+    });
+
     connect (searchSong, SIGNAL(textChanged(const QString &)), this, SLOT(search(const QString &)));
 
     connect (playlistsBar, &QTabBar::tabBarClicked, [=](int index) {
@@ -608,8 +616,10 @@ bool MainWindow::openFile ()
 
     drawPlaylist();
     if (playlist.size() == 1)
+    {
+        playingSongPlaylist = currentPlaylistName;
         setActive(0);
-
+    }
     return true;
 }
 void MainWindow::reorderPlaylist () {
@@ -985,12 +995,13 @@ void MainWindow::setActive(int index) {
 
     Song temp;
 
-    if (searchSong->text() == "")
+    if (searchSong->text() == "" || playingSongPlaylist != currentPlaylistName)
     {
         temp = Song(playlists[playingSongPlaylist][index].path);
     }
-    else {
+    else if (searchSong->text() != "") {
         temp = Song(playlist[index].path);
+        playingSongPlaylist = currentPlaylistName;
     }
 
     if (!QFile::exists(temp.path))
@@ -1088,13 +1099,15 @@ void MainWindow::setActive(int index) {
     QString len = seconds2qstring(getDuration());
     songDuration->setText(len);
 
+    searchSong->setText("");
+
     if (currentPlaylistName == playingSongPlaylist)
     {
-        playlistWidget->setCurrentRow(index);
+        playlistWidget->setCurrentRow(currentID);
         writeLog("Song changed to: " + playlistWidget->currentItem()->text());
     }
     setTitle();
-    searchSong->setText("");
+
 }
 void MainWindow::forward () {
     if (channel == NULL || playlists[playingSongPlaylist].size() == 1)
@@ -1454,6 +1467,7 @@ void MainWindow::prerenderFft (QString file)
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
+                clearPrerenderedFft();
                 return;
             }
         } while (prerenderedFft[i] < tempfft[i]);
@@ -1461,6 +1475,7 @@ void MainWindow::prerenderFft (QString file)
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
         if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
+            clearPrerenderedFft();
             return;
         }
     }
@@ -1644,6 +1659,14 @@ void MainWindow::settings () {
         });
     }
 }
+void MainWindow::visualizations () {
+    visualWin->raise();
+    visualWin->setFocus();
+    visualWin->show();
+
+    visualWindowOpened = true;
+    visualBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
+}
 void MainWindow::reloadStyles () {
     closeBtn->setStyleSheet("QPushButton { font-size: 18px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     volumeSlider->setStyleSheet("QSlider::groove:horizontal {" \
@@ -1702,6 +1725,8 @@ void MainWindow::reloadStyles () {
     if (shuffle) shuffleBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     if (repeat) repeatBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     if (remoteServerEnabled) remoteBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
+    if (visualWindowOpened)
+        visualBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
 
 }
 

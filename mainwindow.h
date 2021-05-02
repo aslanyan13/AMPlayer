@@ -64,6 +64,7 @@
 #include "settingswindow.h"
 #include "playlistreader.h"
 #include "equalizerwindow.h"
+#include "visualizationwindow.h"
 
 #include "fifo_map.hpp"
 
@@ -154,13 +155,7 @@ private slots:
         equalizerWin->move (this->pos().x() + 200, this->pos().y() + 150);
         */
     }
-    void visualizations () {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Visualizations");
-        msgBox.setText("Visualizations will be added soon!");
-        msgBox.setStyleSheet("background-color: #101010; color: silver;");
-        msgBox.exec();
-    }
+    void visualizations ();
 
     void colorChange();
 
@@ -182,6 +177,7 @@ private:
     bool remoteServerEnabled = false;
     bool volumeSliderToggled = false;
     bool muted = false;
+    bool visualWindowOpened = false;
 
     float starttime;
     float volume = 1;
@@ -240,6 +236,7 @@ private:
     PlaylistReader * XMLreader = nullptr;
     settingsWindow * settingsWin = nullptr;
     equalizerWindow * equalizerWin = nullptr;
+    VisualizationWindow * visualWin = nullptr;
 
     QWebSocketServer * removeControlServer;
     QTcpServer * httpServer;
@@ -265,6 +262,7 @@ private:
     void closeEvent(QCloseEvent * event) {
         this->equalizerWin->close();
         this->settingsWin->close();
+        this->visualWin->close();
     };
 
     void paintEvent(QPaintEvent * event);
