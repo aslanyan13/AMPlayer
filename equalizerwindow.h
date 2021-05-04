@@ -4,8 +4,12 @@
 #include <QWidget>
 #include <QSlider>
 #include <QDebug>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QLabel>
 
 #include <time.h>
+#include <string>
 
 #include "bass.h"
 #include "bass_fx.h"
@@ -22,14 +26,20 @@ class equalizerWindow : public QWidget
 
 public:
     HSTREAM * channel;
+    QColor * mainColor;
+    std::string * mainColorStr;
+    QCheckBox * enabledCheckBox;
 
     explicit equalizerWindow(QWidget * parent = nullptr);
     ~equalizerWindow();
 
     void init();
+    void reloadStyles ();
 
 private:
     Ui::equalizerWindow * ui;
+
+    QComboBox * templates;
 
     QSlider * pitch;
     QSlider * tempo;

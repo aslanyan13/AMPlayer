@@ -9,6 +9,7 @@
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMenu>
+#include <QCheckBox>
 #include <QInputDialog>
 #include <QCloseEvent>
 #include <QMouseEvent>
@@ -142,18 +143,18 @@ private slots:
         msgBox.exec();
     }
     void equalizer () {
+        /*
         QMessageBox msgBox;
         msgBox.setWindowTitle("Equalizer");
         msgBox.setText("Equalizer will be added soon!");
         msgBox.setStyleSheet("background-color: #101010; color: silver;");
         msgBox.exec();
-
-        /*
-        equalizerWin->raise();
-        equalizerWin->setFocus();
-        equalizerWin->show();
-        equalizerWin->move (this->pos().x() + 200, this->pos().y() + 150);
         */
+
+        equalizerWin->raise();
+        equalizerWin->show();
+        equalizerWin->move (this->pos().x() + (this->size().width() - equalizerWin->size().width()) / 2, this->pos().y() + (this->size().height() - equalizerWin->size().height()) / 2);
+        equalizerWin->setFocus();
     }
     void visualizations ();
 
@@ -178,6 +179,7 @@ private:
     bool volumeSliderToggled = false;
     bool muted = false;
     bool visualWindowOpened = false;
+    bool equoEnabled = false;
 
     float starttime;
     float volume = 1;
@@ -192,6 +194,7 @@ private:
 
     QString currentPlaylistName = "";
     QString playingSongPlaylist = "";
+    QString lastPlaylistName = "";
 
     vector <Song> playlist;
     int currentID = -1;
@@ -322,6 +325,16 @@ private:
             this->coverBgOpacity = i;
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
+    }
+
+    int getPlaylistIndexByName (QString name) {
+        int i = 0;
+        for (auto & playlist : playlists)
+        {
+            if (name == playlist.first) break;
+            i++;
+        }
+        return i;
     }
 };
 #endif // MAINWINDOW_H

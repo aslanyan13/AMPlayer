@@ -107,6 +107,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     settingsWin = new settingsWindow();
     equalizerWin = new equalizerWindow();
+    equalizerWin->mainColorStr = &mainColorStr;
+    equalizerWin->reloadStyles();
     visualWin = new VisualizationWindow(nullptr, &channel);
 
     QHBoxLayout * horizontalLayout = new QHBoxLayout();
@@ -216,6 +218,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     remoteBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
     remoteBtn->setText("\uf3cd");
     remoteBtn->setCursor(Qt::PointingHandCursor);
+    remoteBtn->setMouseTracking(true);
     remoteBtn->show();
 
     timerBtn = new QPushButton (this);
@@ -387,11 +390,36 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     volumeSlider->hide();
 
+    connect (equalizerWin->enabledCheckBox, &QCheckBox::stateChanged, [=](int state) {
+        equoEnabled = (state == Qt::Checked);
+
+        if (currentID == -1) return;
+
+        Song temp = playlists[playingSongPlaylist][currentID];
+        double pos = getPosition();
+
+        BASS_StreamFree(channel);
+
+        if (equoEnabled) {
+            channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+            channel = BASS_FX_TempoCreate(channel, NULL);
+            equalizerWin->channel = &channel;
+            equalizerWin->init();
+            equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
+        } else {
+            channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, 0);
+            equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
+        }
+
+        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, pos), BASS_POS_BYTE);
+    });
+
     // If visualizations window closed
     connect (visualWin->closeBtn, &QPushButton::pressed, [=]() {
         qDebug() << "Closed!";
         visualWindowOpened = false;
         visualBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
+        this->setFocus();
     });
 
     connect (searchSong, SIGNAL(textChanged(const QString &)), this, SLOT(search(const QString &)));
@@ -426,6 +454,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             if (selectedItem)
             {
                 if (selectedItem->text() == "Play") {
+                    lastPlaylistName = playingSongPlaylist;
                     playingSongPlaylist = currentPlaylistName;
                     lastTrackID = currentID;
                     setActive(itemIndex);
@@ -508,7 +537,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow()
 {
-    remove("cover.png");
+    remove("cover.png");    // Remove Cover file
 
     QString uptime = seconds2qstring((clock() - starttime) / 1000);
     writeLog("Exiting...");
@@ -522,7 +551,7 @@ MainWindow::~MainWindow()
     XMLreader->writePlaylists(playlists);
     delete ui;
 }
-
+// Program menu
 void MainWindow::menuContext () {
     QMenu myMenu;
     myMenu.setStyleSheet("background-color: #121212; color: silver");
@@ -555,7 +584,7 @@ void MainWindow::menuContext () {
         }
     }
 }
-
+// Open File
 bool MainWindow::openFile ()
 {
     searchSong->setText("");
@@ -617,6 +646,7 @@ bool MainWindow::openFile ()
     drawPlaylist();
     if (playlist.size() == 1)
     {
+        lastPlaylistName = playingSongPlaylist;
         playingSongPlaylist = currentPlaylistName;
         setActive(0);
     }
@@ -644,7 +674,6 @@ void MainWindow::reorderPlaylist () {
     drawPlaylist();
 }
 void MainWindow::rowsMoved(QModelIndex, int, int, QModelIndex, int) {
-    qDebug() << "moved";
     reorderPlaylist();
 }
 
@@ -660,6 +689,7 @@ void MainWindow::removeFile() {
 
     if (globalIndex == currentID)
     {
+        playingSongPlaylist = "";
         BASS_ChannelStop(channel);
         channel = NULL;
         songTitle->setText("");
@@ -761,7 +791,6 @@ bool MainWindow::openFolder () {
 
     return true;
 }
-
 void MainWindow::createPlaylist ()
 {
     QString name;
@@ -814,6 +843,7 @@ void MainWindow::removePlaylist (int index) {
 
         if (currentSongInPlaylist)
         {
+            playingSongPlaylist = "";
             BASS_ChannelStop(channel);
             channel = NULL;
             pauseBtn->setText("\uf04b");
@@ -836,11 +866,18 @@ void MainWindow::removePlaylist (int index) {
         playlists.erase(playlistName);
     }
 
-    currentPlaylistName = "Default";
+    if (playingSongPlaylist == "")
+        currentPlaylistName = "Default";
+    else
+        currentPlaylistName = playingSongPlaylist;
+
     playlist = playlists[currentPlaylistName];
+
+    int playlistIndex = getPlaylistIndexByName(currentPlaylistName);
 
     drawPlaylist();
     drawAllPlaylists();
+    playlistsBar->setCurrentIndex(playlistIndex);
 }
 void MainWindow::search(const QString & text)
 {
@@ -981,6 +1018,7 @@ void MainWindow::playlistsBarContextMenu (const QPoint& point) {
 
 void MainWindow::setActive(QListWidgetItem * item) {
     lastTrackID = currentID;
+    lastPlaylistName = playingSongPlaylist;
     playingSongPlaylist = currentPlaylistName;
     setActive (playlistWidget->currentRow());
 }
@@ -990,7 +1028,7 @@ void MainWindow::setActive(int index) {
     paused = true;
     pauseBtn->setText("\uf04c"); // Set symbol to pause
 
-    if (playingSongPlaylist == currentPlaylistName && index == lastTrackID)
+    if (playingSongPlaylist == lastPlaylistName && index == lastTrackID)
         isSameTrack = true;
 
     Song temp;
@@ -1001,7 +1039,6 @@ void MainWindow::setActive(int index) {
     }
     else if (searchSong->text() != "") {
         temp = Song(playlist[index].path);
-        playingSongPlaylist = currentPlaylistName;
     }
 
     if (!QFile::exists(temp.path))
@@ -1041,7 +1078,7 @@ void MainWindow::setActive(int index) {
     }
 
     coverLoaded = true;
-    if (cover.isNull())
+    if (cover.isNull()) // Audio file don't contain cover, load custom cover
     {
         coverLoaded = false;
         cover = QImage (":/Images/cover-placeholder.png");
@@ -1050,13 +1087,15 @@ void MainWindow::setActive(int index) {
     if (channel != NULL)
         BASS_StreamFree(channel);
 
-    // channel = BASS_StreamCreateFile(FALSE, path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
-    // channel = BASS_FX_TempoCreate(channel, NULL);
+    if (equoEnabled) {
+        channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+        channel = BASS_FX_TempoCreate(channel, NULL);
+        equalizerWin->channel = &channel;
+        equalizerWin->init();
 
-    // equalizerWin->channel = &channel;
-    // equalizerWin->init();
-
-    channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, 0);
+    } else {
+        channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, 0);
+    }
 
     /* Will be added soon
     if (BASS_ErrorGetCode() != 0) {
@@ -1079,17 +1118,6 @@ void MainWindow::setActive(int index) {
         thr2.detach();
     }
 
-    /*
-    std::thread thr3([&]() {
-        for (int i = 0; i <= (volume * 100); i++)
-        {
-            BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, i / 100.0f);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-    });
-    thr3.detach();
-    */
-
     BASS_ChannelPlay(channel, false);
     if (muted) BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, 0);
     else BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
@@ -1107,7 +1135,7 @@ void MainWindow::setActive(int index) {
         writeLog("Song changed to: " + playlistWidget->currentItem()->text());
     }
     setTitle();
-
+    reloadStyles();
 }
 void MainWindow::forward () {
     if (channel == NULL || playlists[playingSongPlaylist].size() == 1)
@@ -1157,6 +1185,7 @@ void MainWindow::pause()
 {
     if (playlistWidget->currentRow() != -1 && channel == NULL) {
         lastTrackID = currentID;
+        lastPlaylistName = playingSongPlaylist;
         playingSongPlaylist = currentPlaylistName;
         setActive(playlistWidget->currentRow());
         return;
@@ -1294,11 +1323,8 @@ void MainWindow::updateTime() {
             writeLog("Song ended");
 
             if (repeat) {
-                writeLog("Song restarted");
-                BASS_StreamFree(channel);
-                channel = BASS_StreamCreateFile(FALSE, playlists[playingSongPlaylist][currentID].path.toStdWString().c_str(), 0, 0, 0);
-                BASS_ChannelPlay(channel, true);
-                BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+                lastTrackID = currentID;
+                setActive(currentID);
             }
             else if (shuffle && playlist.size() > 1) {
                 lastTrackID = currentID;
@@ -1518,9 +1544,14 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
         searchSong->lower();
     }
 
-    if (volumeBtn->underMouse())
-        volumeSliderToggled = true;
+    if (remoteBtn->underMouse() && remoteServerEnabled)
+        remoteBtn->setToolTip("Remote Control. " + QString::number(remoteDevices.size()) + " devices connected!");
 
+    if (volumeBtn->underMouse())
+    {
+        volumeBtn->setToolTip("Volume: " + QString::number(volume * 100));
+        volumeSliderToggled = true;
+    }
     if (volumeSliderToggled && mouseX >= 630 && mouseX <= 785 && mouseY >= 291 && mouseY <= 321) volumeSlider->show();
     else {
         volumeSlider->hide();
@@ -1656,6 +1687,7 @@ void MainWindow::settings () {
     {
         connect(settingsWin->colorBtns[i], &QPushButton::pressed, [=] () {
             reloadStyles();
+            equalizerWin->reloadStyles();
         });
     }
 }
@@ -1727,7 +1759,8 @@ void MainWindow::reloadStyles () {
     if (remoteServerEnabled) remoteBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     if (visualWindowOpened)
         visualBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
-
+    if (equoEnabled)
+        equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
 }
 
 void MainWindow::colorChange()
@@ -1781,6 +1814,7 @@ void MainWindow::colorChange()
     }
 
     reloadStyles ();
+    equalizerWin->reloadStyles();
 }
 
 //           --- Web Socket Functions ---

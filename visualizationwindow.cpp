@@ -10,7 +10,7 @@ VisualizationWindow::VisualizationWindow(QWidget * parent, HSTREAM * chan) : QWi
 
     ui->setupUi(this);
 
-    this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
+    this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint/* | Qt::WindowStaysOnTopHint*/); // Window transparency
     this->setAttribute(Qt::WA_TranslucentBackground);
     this->setMouseTracking(true);
 
@@ -48,7 +48,7 @@ VisualizationWindow::VisualizationWindow(QWidget * parent, HSTREAM * chan) : QWi
     minimizeBtn = new QPushButton(titlebarWidget);
     minimizeBtn->setFont(fontAwesome);
     minimizeBtn->setToolTip("Minimize");
-    minimizeBtn->setGeometry(this->size().width() - 55, 7, 15, 15);
+    minimizeBtn->setGeometry(this->size().width() - 50, 7, 15, 15);
     minimizeBtn->setStyleSheet("QPushButton { font-size: 13px; border: 0px solid silver; background-color: #101010; color: silver; }");
     minimizeBtn->setCursor(Qt::PointingHandCursor);
     minimizeBtn->setText(QString::fromStdWString(L"\uf2d1"));

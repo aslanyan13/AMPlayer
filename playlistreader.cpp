@@ -1,9 +1,5 @@
 #include "playlistreader.h"
 
-PlaylistReader::PlaylistReader()
-{
-
-}
 void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlists)
 {
     QFile file(filename);
@@ -35,6 +31,8 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
                 if (xmlReader.name() == "song" && attribute_value != "")
                 {
                     Song temp(xmlReader.readElementText());
+
+                    if (!QFile::exists(temp.path)) continue;
 
                     TagLib::FileRef f(temp.path.toStdWString().c_str());
 

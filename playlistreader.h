@@ -28,7 +28,7 @@ private:
     QString filename;
     bool fileOpened;
 public:
-    PlaylistReader();
+    PlaylistReader() {};
     PlaylistReader(QString f) : filename(f) {};
 
     void readPlaylists (fifo_map <QString, vector <Song>> & playlists);
