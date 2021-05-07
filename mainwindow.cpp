@@ -29,7 +29,20 @@ QImage applyEffectToImage(QImage src, QGraphicsEffect * effect, int extent = 0)
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
-{   
+{
+    if (QtWin::isCompositionEnabled())
+        QtWin::extendFrameIntoClientArea(this, 0, 0, 0, 0);
+    else
+        QtWin::resetExtendedFrame(this);
+
+    QWinTaskbarButton * windowsTaskbarButton = new QWinTaskbarButton(this);    //Create the taskbar button which will show the progress
+    windowsTaskbarButton->setWindow(this->windowHandle());    //Associate the taskbar button to the progress bar, assuming that the progress bar is its own window
+
+    taskbarProgress = windowsTaskbarButton->progress();
+    taskbarProgress->show();
+
+    // taskbarProgress = new QWinTaskbarProgress(progressBar->windowHandle());
+
     removeControlServer = new QWebSocketServer("Remote Control Server", QWebSocketServer::NonSecureMode, this);
 
     httpServer = new QTcpServer(this);
@@ -84,14 +97,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->setupUi(this);
 
     // Window settings
+    QPixmap pixmap = QPixmap::fromImage(QImage (":/Images/cover-placeholder.png"));
+    this->setWindowIcon(QIcon(pixmap));
     this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
     this->setStyleSheet("QMainWindow { background-color: #101010; }"
                         "QInputDialog, QInputDialog * { background-color: #101010; color: silver; }"
                         "QToolTip { background-color: #101010; color: silver; font-size: 12px; border: 1px solid silver; }");
 
-    this->setWindowTitle("AMPlayer v1.0a");
+    this->setWindowTitle("AMPlayer");
     this->setMouseTracking(true);
     this->centralWidget()->setMouseTracking(true);
+
+    QRect rec = QApplication::desktop()->screenGeometry();
 
     // Album cover load
     QImageReader reader(QDir::currentPath() + "/Images/cover-placeholder2.png");
@@ -110,6 +127,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     equalizerWin->mainColorStr = &mainColorStr;
     equalizerWin->reloadStyles();
     visualWin = new VisualizationWindow(nullptr, &channel);
+
+    infoWidget = new InfoWidget();
+    infoWidget->show();
 
     QHBoxLayout * horizontalLayout = new QHBoxLayout();
     horizontalLayout->setSpacing(0);
@@ -304,8 +324,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     playlistWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     playlistWidget->setMouseTracking(true);
     playlistWidget->installEventFilter(this);
+    playlistWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
 
-    QScrollBar *vbar = playlistWidget->verticalScrollBar();
+    QScrollBar * vbar = playlistWidget->verticalScrollBar();
     vbar->setStyle( new QCommonStyle );
     vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #101010; }" \
                         "QScrollBar::add-line:vertical { height: 0; }" \
@@ -314,7 +335,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                         "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
                         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
 
-    QScrollBar *hbar = playlistWidget->horizontalScrollBar();
+    QScrollBar * hbar = playlistWidget->horizontalScrollBar();
     hbar->setStyle( new QCommonStyle );
     hbar->setStyleSheet("QScrollBar:horizontal { outline: 0; border-radius: 20px; border: 0px solid black; height: 5px; background: #101010; }" \
                         "QScrollBar::add-line:horizontal { height: 0; }" \
@@ -358,7 +379,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     songDuration->setStyleSheet("/* border: 1px solid silver; background-color: #101010; */ color: gray;");
     songDuration->show();
 
-    volumeSlider = new QSlider (Qt::Horizontal, this);
+    volumeSlider = new CustomSlider (Qt::Horizontal, this);
     volumeSlider->setMaximum(100);
     volumeSlider->setMinimum(0);
     volumeSlider->setValue(100);
@@ -402,14 +423,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
         if (equoEnabled) {
             channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+            if (BASS_ErrorGetCode())
+                channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+
             channel = BASS_FX_TempoCreate(channel, NULL);
             equalizerWin->channel = &channel;
             equalizerWin->init();
             equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
         } else {
             channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, 0);
+            if (BASS_ErrorGetCode())
+                channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, 0);
+
             equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
         }
+
+        if (muted) BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, 0);
+        else BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 
         BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, pos), BASS_POS_BYTE);
     });
@@ -423,6 +453,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
 
     connect (searchSong, SIGNAL(textChanged(const QString &)), this, SLOT(search(const QString &)));
+    connect (searchSong, &QLineEdit::returnPressed, [=]() {
+        lastTrackID = currentID;
+        lastPlaylistName = playingSongPlaylist;
+        playingSongPlaylist = currentPlaylistName;
+        setActive(0);
+    });
 
     connect (playlistsBar, &QTabBar::tabBarClicked, [=](int index) {
         if (playlistsBar->tabText(index) == "\uf067")
@@ -533,6 +569,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     drawPlaylist();
     drawAllPlaylists();
+
+    // this->move((rec.width() - this->size().width()) / 2, (rec.height() - this->size().height()) / 2);
+    this->setGeometry(QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, this->size(), qApp->desktop()->availableGeometry()));
 }
 
 MainWindow::~MainWindow()
@@ -592,7 +631,7 @@ bool MainWindow::openFile ()
     QFileDialog dialog(this);
     dialog.setDirectory(QDir::homePath());
     dialog.setFileMode(QFileDialog::ExistingFiles);
-    dialog.setNameFilter(trUtf8("Audio files (*.mo3 *.mp3 *.mp2 *.mp1 *.ogg *.aif *.aiff *.wav)"));
+    dialog.setNameFilter(trUtf8("Audio files (*.flac *.aac *.m4a *.mp4 *.mp3 *.mp2 *.mp1 *.ogg *.aif *.aiff *.wav)"));
 
     QStringList fileNames;
 
@@ -689,8 +728,7 @@ void MainWindow::removeFile() {
 
     if (globalIndex == currentID)
     {
-        playingSongPlaylist = "";
-        BASS_ChannelStop(channel);
+        BASS_StreamFree(channel);
         channel = NULL;
         songTitle->setText("");
         songInfo->setText("");
@@ -701,6 +739,7 @@ void MainWindow::removeFile() {
         coverLoaded = false;
         cover = QImage (":/Images/cover-placeholder.png");
         currentID = -1;
+        playingSongPlaylist = "";
     }
     else if (globalIndex < currentID)
         currentID--;
@@ -722,7 +761,7 @@ bool MainWindow::openFolder () {
         return false;
 
     QDir directory(folder);
-    QStringList musicFiles = directory.entryList(QStringList() << "*.ogg" << "*.aif" << "*.aiff" << "*.mp3" << "*.mo3" << "*.wav" << "*.mp2" << "*.mp1", QDir::Files | QDir::Readable);
+    QStringList musicFiles = directory.entryList(QStringList() << "*.flac" << "*.ogg" << "*.aif" << "*.aiff" << "*.aac" << "*.m4a" << "*.mp4" << "*.mp3" << "*.mo3" << "*.wav" << "*.mp2" << "*.mp1", QDir::Files | QDir::Readable);
 
     writeLog("Folder opened: " + folder);
     writeLog("Folder contains: " + QString::number (musicFiles.length()) + " files");
@@ -843,8 +882,7 @@ void MainWindow::removePlaylist (int index) {
 
         if (currentSongInPlaylist)
         {
-            playingSongPlaylist = "";
-            BASS_ChannelStop(channel);
+            BASS_StreamFree(channel);
             channel = NULL;
             pauseBtn->setText("\uf04b");
             songTitle->setText("");
@@ -855,6 +893,7 @@ void MainWindow::removePlaylist (int index) {
             coverLoaded = false;
             cover = QImage (":/Images/cover-placeholder.png");
             currentID = -1;
+            playingSongPlaylist = "";
         }
     }
 
@@ -984,7 +1023,11 @@ void MainWindow::changeCurrentPlaylist (int index) {
     playlist = playlists[playlistsBar->tabText(index)];
     currentPlaylistName = playlistsBar->tabText(index);
 
+    float start = clock();
+
     drawPlaylist();
+
+    qDebug() << clock() - start;
 }
 
 void MainWindow::playlistsBarContextMenu (const QPoint& point) {
@@ -1035,10 +1078,10 @@ void MainWindow::setActive(int index) {
 
     if (searchSong->text() == "" || playingSongPlaylist != currentPlaylistName)
     {
-        temp = Song(playlists[playingSongPlaylist][index].path);
+        temp = playlists[playingSongPlaylist][index];
     }
     else if (searchSong->text() != "") {
-        temp = Song(playlist[index].path);
+        temp = playlist[index].path;
     }
 
     if (!QFile::exists(temp.path))
@@ -1089,12 +1132,20 @@ void MainWindow::setActive(int index) {
 
     if (equoEnabled) {
         channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+        qDebug() << BASS_ErrorGetCode();
+        if (BASS_ErrorGetCode())
+            channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+        qDebug() << BASS_ErrorGetCode();
         channel = BASS_FX_TempoCreate(channel, NULL);
         equalizerWin->channel = &channel;
         equalizerWin->init();
 
     } else {
         channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, 0);
+        qDebug() << BASS_ErrorGetCode();
+        if (BASS_ErrorGetCode())
+            channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, 0);
+        qDebug() << BASS_ErrorGetCode();
     }
 
     /* Will be added soon
@@ -1127,6 +1178,11 @@ void MainWindow::setActive(int index) {
     QString len = seconds2qstring(getDuration());
     songDuration->setText(len);
 
+    taskbarProgress->setMinimum(0);
+    taskbarProgress->setMaximum(getDuration());
+    taskbarProgress->setValue(0);
+    taskbarProgress->show();
+
     searchSong->setText("");
 
     if (currentPlaylistName == playingSongPlaylist)
@@ -1134,8 +1190,14 @@ void MainWindow::setActive(int index) {
         playlistWidget->setCurrentRow(currentID);
         writeLog("Song changed to: " + playlistWidget->currentItem()->text());
     }
+
     setTitle();
     reloadStyles();
+
+    infoWidget->reset();
+    infoWidget->setName(temp.getName());
+    infoWidget->setInfo(songInfo->text());
+    infoWidget->popup(3000);
 }
 void MainWindow::forward () {
     if (channel == NULL || playlists[playingSongPlaylist].size() == 1)
@@ -1283,7 +1345,7 @@ QString MainWindow::seconds2qstring (float seconds) {
     return result;
 }
 double MainWindow::qstring2seconds (QString time) {
-    if (time.count(':') == 2) {
+    if (time.count(':') == 1) {
         int minutes = time.mid(0, time.indexOf(':')).toInt();
         int seconds = time.mid(time.indexOf(':') + 1).toInt();
 
@@ -1295,6 +1357,12 @@ void MainWindow::updateTime() {
     static float songPos = getPosition();   // Static variable of song position
     static int counter = 0;                 // Passed frames counter
 
+    if (paused) {
+        taskbarProgress->resume();
+        taskbarProgress->setValue(songPos);
+    }
+    else
+        taskbarProgress->stop();
     if (isOrderChanged)
     {
         reorderPlaylist();
@@ -1410,7 +1478,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             path.addRoundedRect(QRectF(50 + 5 * i, 350 + 10 + (20 - h) / 2, 3, h), 2, 2);
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
-            if (i * (getDuration() / 140) < getPosition())
+            if ((i - 1) * (getDuration() / 140) <= getPosition())
                 p.fillPath(path, color);
             else
                 p.fillPath(path, QColor (192, 192, 192));
@@ -1426,7 +1494,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
 
-            if (i * (getDuration() / 140) < getPosition())
+            if ((i - 1) * (getDuration() / 140) <= getPosition())
                 p.fillPath(path, color);
             else
                 p.fillPath(path, QColor (192, 192, 192));
@@ -1438,10 +1506,10 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 
 void MainWindow::prerenderFft (QString file)
 {   
-    // std::this_thread::sleep_for(std::chrono::milliseconds(20));
-
     HSTREAM tmp;
-    tmp = BASS_StreamCreateFile(FALSE, file.toStdWString().c_str(), 0, 0, 0);
+    tmp = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
+    if (BASS_ErrorGetCode())
+        tmp = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
 
     writeLog("Prerendering fft...");
 
@@ -1449,63 +1517,70 @@ void MainWindow::prerenderFft (QString file)
     QWORD len = BASS_ChannelGetLength(tmp, BASS_POS_BYTE); // the length in bytes
     float time = BASS_ChannelBytes2Seconds(tmp, len);      // the length in seconds
 
-    int avgLen = 512;
+    int avgLen = 1024;
 
     BASS_ChannelSetAttribute(tmp, BASS_ATTRIB_VOL, 0);
     BASS_ChannelPlay(tmp, FALSE);
 
     float fft[1024];
     float tempfft[140];
-    for (float i = 0; i < time; i+= time / 140, k++)
+
+    for (float i = 0; i < time; i += time / 140, k++)
     {
         BASS_ChannelGetData(tmp, fft, BASS_DATA_FFT2048);
 
-        float max = 0;
-        int q = 0;
-        for (int j = 1; j <= avgLen; j++)
+        vector <float> peaks;
+
+        for (int j = 0; j < 10; j++)
         {
-            if (sqrt(fft[j]) * 3 * 100 - 4 > 5)
+            float max = sqrt(fft[1]) * 3 * 40 - 4;
+            if (max < 0) max = 0;
+            if (max > 40) max = 40;
+
+            for (int k = 2; k <= avgLen; k++)
             {
-                max += sqrt(fft[j]) * 3 * 40 - 4;
-                q++;
+                float value = sqrt(fft[k]) * 3 * 40 - 4;
+
+                if (value < 0) value = 0;
+                if (value > 40) value = 40;
+
+                if (value > max && count(peaks.begin(), peaks.end(), value) == 0)
+                    max = value;
             }
+
+            if (count(peaks.begin(), peaks.end(), max) == 0)
+                peaks.push_back(max);
         }
-        max /= q;
-        max *= 10;
 
-        if (max <= 3) max = 3;
-        else if (max > 40) max = 40;
+        float avgMax = accumulate(peaks.begin(), peaks.end(), 0.0) / peaks.size();
 
-        tempfft[(int)k] = max;
+        if (avgMax <= 3) avgMax = 3;
+        else if (avgMax > 40) avgMax = 40;
 
-        BASS_ChannelSetPosition(tmp, BASS_ChannelSeconds2Bytes(tmp, i), BASS_POS_BYTE);
-    }
+        tempfft[(int)k] = avgMax;
 
-    BASS_StreamFree(tmp);
-
-    for (int i = 0; i < 140; i++)
-    {
         do {
-            int tmp = tempfft[i] / 10;
+            int tmp = tempfft[(int)k] / 10;
             if (tmp < 1) tmp = 1;
 
-            prerenderedFft[i] += tmp;
+            prerenderedFft[(int)k] += tmp;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
                 clearPrerenderedFft();
                 return;
             }
-        } while (prerenderedFft[i] < tempfft[i]);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        } while (prerenderedFft[(int)k] < tempfft[(int)k]);
 
         if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
             clearPrerenderedFft();
             return;
         }
+
+        BASS_ChannelSetPosition(tmp, BASS_ChannelSeconds2Bytes(tmp, i), BASS_POS_BYTE);
     }
 
+    BASS_StreamFree(tmp);
     writeLog("Prerendering fft ended");
 }
 
@@ -1581,16 +1656,20 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             double newtime = ((mouseX - 50) / (700.0f)) * getDuration();
 
             BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, newtime), BASS_POS_BYTE);
+            taskbarProgress->setValue(newtime);
             writeLog("Song position changed to: " + seconds2qstring(newtime) + " (" + QString::number(newtime) + "s)");
         }
         else if (event->button() == Qt::RightButton) {
             timecode->hide();
 
             QMenu myMenu;
+            myMenu.setMouseTracking(true);
             myMenu.setStyleSheet("background-color: #121212; color: silver");
+
             myMenu.addAction("Jump to...");
             myMenu.addAction("Make loop (A-B)");
-            myMenu.setMouseTracking(true);
+            myMenu.addSeparator();
+
             QAction * action = new QAction("Live spectrum", this);
             action->setCheckable(true);
             action->setChecked(liveSpec);
@@ -1624,6 +1703,7 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
                         } else {
                             songPosition->setText(pos);
                             BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, time), BASS_POS_BYTE);
+                            taskbarProgress->setValue(time);
                         }
                     }
                 }
@@ -1668,6 +1748,7 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
 
 
         BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+        taskbarProgress->setValue(new_time);
     }  
 }
 void MainWindow::settings () {
@@ -1825,6 +1906,7 @@ void MainWindow::remoteDeviceConnect () {
     socket->setParent(this);
 
     connect(socket, &QWebSocket::textMessageReceived, this, &MainWindow::getRemoteCommands);
+    connect(socket, &QWebSocket::disconnected, this, &MainWindow::deviceDisconnected);
 
     remoteDevices << socket;
 
@@ -1844,6 +1926,7 @@ void MainWindow::getRemoteCommands (const QString & command) {
 
             qDebug() << "Pos: " << new_time;
             BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+            taskbarProgress->setValue(new_time);
         }
         if (command.mid(0, command.indexOf('|')) == "vol") {
             QString vol = command.mid(command.indexOf('|') + 1);
@@ -1893,4 +1976,14 @@ void MainWindow::httpNewConnection() {
         qDebug() << "Connection closed!";
         socket->close();
     });
+}
+void MainWindow::deviceDisconnected()
+{
+    QWebSocket * pClient = qobject_cast<QWebSocket *>(sender());
+    QTextStream(stdout) << getIdentifier(pClient) << " disconnected!\n";
+    if (pClient)
+    {
+        remoteDevices.removeAll(pClient);
+        pClient->deleteLater();
+    }
 }

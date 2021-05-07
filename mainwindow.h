@@ -7,6 +7,9 @@
 #include <QPaintEvent>
 #include <QPainterPath>
 #include <QListWidget>
+#include <QProgressBar>
+#include <QWinTaskbarButton>
+#include <QWinTaskbarProgress>
 #include <QListWidgetItem>
 #include <QMenu>
 #include <QCheckBox>
@@ -59,6 +62,7 @@
 // Bass header files
 #include "bass.h"
 #include "bass_fx.h"
+#include "bassflac.h"
 
 // Custom header files
 #include "song.h"
@@ -66,6 +70,8 @@
 #include "playlistreader.h"
 #include "equalizerwindow.h"
 #include "visualizationwindow.h"
+#include "infowidget.h"
+#include "customslider.h"
 
 #include "fifo_map.hpp"
 
@@ -188,6 +194,8 @@ private:
 
     int httpServerPort;
 
+    QWinTaskbarProgress * taskbarProgress;
+
     fifo_map <QString, vector <Song>> playlists;
 
     QFile logfile;
@@ -213,7 +221,7 @@ private:
     QLabel * songPosition;
     QLabel * timecode;
     QLabel * windowTitle;
-    QSlider * volumeSlider;
+    CustomSlider * volumeSlider;
 
     QImage cover;
 
@@ -236,6 +244,7 @@ private:
 
     Ui::MainWindow *ui;
 
+    InfoWidget * infoWidget = nullptr;
     PlaylistReader * XMLreader = nullptr;
     settingsWindow * settingsWin = nullptr;
     equalizerWindow * equalizerWin = nullptr;
@@ -250,6 +259,12 @@ private:
             device->sendTextMessage(message);
         }
     }
+    QString getIdentifier(QWebSocket *peer)
+    {
+        return QStringLiteral("%1:%2").arg(peer->peerAddress().toString(),
+                                           QString::number(peer->peerPort()));
+    }
+    void deviceDisconnected();
 
     void searchInPlaylist(const QString & text);
     void drawAllPlaylists();

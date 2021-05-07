@@ -6,7 +6,13 @@ Song::Song()
 }
 
 double Song::getDuration () {
-    HSTREAM stream = BASS_StreamCreateFile(false, path.toStdWString().c_str(), 0, 0, 0);
+    HSTREAM stream;
+
+    if (getFormat() == "FLAC")
+        stream = BASS_FLAC_StreamCreateFile(false, path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+    else
+        stream = BASS_StreamCreateFile(FALSE, path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+
     QWORD len = BASS_ChannelGetLength(stream, 0); // the length in bytes
     double dur = BASS_ChannelBytes2Seconds(stream, len);
 

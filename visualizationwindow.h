@@ -17,6 +17,7 @@
 #include "bass.h"
 
 #include <math.h>
+#include <vector>
 
 const float PI = 3.14159f;
 
@@ -41,7 +42,7 @@ private:
 
     Ui::VisualizationWindow * ui;
 
-    int mode = 1;
+    int mode = 2;
 
     HSTREAM * channel;
 

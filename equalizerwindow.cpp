@@ -26,7 +26,7 @@ equalizerWindow::equalizerWindow(QWidget *parent) : QWidget(parent), ui(new Ui::
 
     for (int i = 0; i < FREQS_COUNT; i++)
     {
-        freqs[i] = new QSlider(Qt::Vertical, this);
+        freqs[i] = new CustomSlider(Qt::Vertical, this);
         freqs[i]->setContextMenuPolicy(Qt::CustomContextMenu);
         freqs[i]->setStyleSheet("QSlider::groove:vertical {" \
                                     "border: 1px solid #999999; " \
@@ -51,6 +51,7 @@ equalizerWindow::equalizerWindow(QWidget *parent) : QWidget(parent), ui(new Ui::
                                     "margin: 0px 7px;" \
                                     "background: silver; " \
                                 "}");
+        freqs[i]->setCursor(Qt::PointingHandCursor);
         freqs[i]->setGeometry(15 + 30 * i, 60, 20, 150);
         freqs[i]->setRange(-12, 12);
         freqs[i]->setValue(0);
@@ -75,14 +76,14 @@ equalizerWindow::equalizerWindow(QWidget *parent) : QWidget(parent), ui(new Ui::
         freqNum->setAlignment(Qt::AlignCenter);
     }
 
-    pitch = new QSlider(Qt::Horizontal, this);
+    pitch = new CustomSlider(Qt::Horizontal, this);
     pitch->setGeometry(20, 250, 100, 15);
     pitch->setRange(-100, 100);
     pitch->setValue(0);
     pitch->setSingleStep(1);
     pitch->hide();
 
-    tempo = new QSlider(Qt::Horizontal, this);
+    tempo = new CustomSlider(Qt::Horizontal, this);
     tempo->setGeometry(140, 250, 100, 15);
     tempo->setRange(-50, 50);
     tempo->setValue(0);

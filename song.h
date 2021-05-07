@@ -27,6 +27,7 @@
 #include <attachedpictureframe.h>
 
 #include "bass.h"
+#include "bassflac.h"
 
 using namespace std;
 using namespace TagLib;

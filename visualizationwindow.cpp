@@ -160,6 +160,53 @@ void VisualizationWindow::paintEvent(QPaintEvent * event) {
             }
         }
     }
+    else if (mode == 2) {
+        float fft[1024];
+
+        BASS_ChannelGetData(*channel, fft, BASS_DATA_FFT2048);
+
+        std::vector <int> peaks;
+
+        for (int j = 0; j < 100; j++)
+        {
+            int max = sqrt(fft[1]) * 3 * winSize.height() - 4;
+            for (int k = 2; k < 512; k++)
+            {
+                int value = sqrt(fft[k]) * 3 * winSize.height() - 4;
+
+                if (value < 0) value = 0;
+                if (value > winSize.height()) value = winSize.height();
+
+                if (value > max && count(peaks.begin(), peaks.end(), value) == 0)
+                    max = value;
+            }
+            peaks.push_back(max);
+        }
+
+        for (int i = 0; i < 512; i++)
+        {
+            int blocksH = sqrt(fft[i + 1]) * winSize.height() * 3 - 4;
+
+            if (blocksH < 0) blocksH = 0;
+            if (blocksH > winSize.height()) blocksH = winSize.height();
+
+            if (count(peaks.begin(), peaks.end(), blocksH) != 0) {
+                peaks.erase(std::find(peaks.begin(), peaks.end(), blocksH));
+                painter.setPen(QPen(QColor(255, 0, 0)));
+                painter.setBrush(QBrush(QColor(255, 0, 0)));
+            } else {
+                painter.setPen(QPen(QColor(255, 255, 255)));
+                painter.setBrush(QBrush(QColor(255, 255, 255)));
+            }
+
+
+            painter.drawLine(i, winSize.height() - blocksH, i, (winSize.height() - blocksH) + blocksH);
+        }
+
+        painter.setPen(QPen(QColor(255, 0, 0)));
+        painter.setBrush(QBrush(QColor(255, 0, 0)));
+        painter.drawLine(0, winSize.height() - (winSize.height() * 0.05f), winSize.width(), winSize.height() - (winSize.height() * 0.05f));
+    }
 }
 
 void VisualizationWindow::mouseMoveEvent (QMouseEvent * event) {
