@@ -1,7 +1,27 @@
-# AMPlayer
-Aslanyan Music Player (Graduation work)
+# AMPlayer v1.0-alpha x86
+**AMPlayer** - Simple, lightweight, convenient and feature-rich music player written using C++ Qt5.
 
-## Screenshots:                                                                                                             
-![bandicam 2021-04-15 20-27-28-140](https://user-images.githubusercontent.com/31659985/114904751-3b429880-9e29-11eb-8718-50b95c7054d3.jpg)                
+### Used libraries:
+* [Qt](https://www.qt.io/)
+* [Bass](http://www.un4seen.com/)
+* [Taglib](https://taglib.org/)
+* [Fifo Map](https://github.com/nlohmann/fifo_map)
+
+### Supported formats:
+**AAC, MP4, MP3, MP2, MP1, FLAC, AIF, WAV, OGG**
+
+### Hotkeys:
+**Ctrl + O**: Open file                                                                           
+**Ctrl + Shift + O**: Open folder                                                                                     
+**Ctrl + Right**: Previous track                                                                          
+**Ctrl + Left**: Next track                                                                          
+**Ctrl + Up**: Volume up (5%)                                                                          
+**Ctrl + Down**: Volume down (-5%)                                                                          
+**Ctrl + Shift + L**: Toggle live spectrum mode                                                                          
+**Ctrl + J**: Jump to position                                                                          
+
+### Screenshots:
+![image](https://user-images.githubusercontent.com/31659985/117671718-27851a80-b1ba-11eb-8c8a-d432b3a97313.png)
+          
 
 
