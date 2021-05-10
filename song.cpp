@@ -48,7 +48,6 @@ QImage Song::getCover() {
 
                     ofstream file("cover.png", ios::out | ios::binary | ofstream::trunc);
 
-
                     file.write(PicFrame->picture().data(), PicFrame->picture().size());
                     file.close();
 

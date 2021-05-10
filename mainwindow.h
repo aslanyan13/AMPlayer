@@ -8,9 +8,11 @@
 #include <QPainterPath>
 #include <QListWidget>
 #include <QProgressBar>
+#include <QDialogButtonBox>
 #include <QWinTaskbarButton>
 #include <QWinTaskbarProgress>
 #include <QListWidgetItem>
+#include <QFormLayout>
 #include <QMenu>
 #include <QCheckBox>
 #include <QInputDialog>
@@ -27,6 +29,7 @@
 #include <QTimer>
 #include <QImage>
 #include <QImageReader>
+#include <QShortcut>
 #include <QPixmap>
 #include <QFontDatabase>
 #include <QFont>
@@ -117,6 +120,7 @@ private slots:
     void changeRepeat ();
     void changeShuffle ();
 
+
     void updateTime();
 
     void remoteDeviceConnect ();
@@ -174,18 +178,29 @@ private slots:
 private:
     HSTREAM channel;
 
+    bool looped = false;
     bool paused = true;
     bool repeat = false;
     bool shuffle = false;
     bool liveSpec = false;
     bool colorChanging = false;
     bool coverLoaded = true;
+    bool coverBgBlur = true;
     bool logging = true;
     bool remoteServerEnabled = false;
+    bool remoteScrolling = false;
     bool volumeSliderToggled = false;
     bool muted = false;
     bool visualWindowOpened = false;
     bool equoEnabled = false;
+
+    float loopStart = -1;
+    float loopEnd = -1;
+    void removeLoop() {
+        loopStart = -1;
+        loopEnd = -1;
+        looped = false;
+    }
 
     float starttime;
     float volume = 1;
@@ -339,6 +354,32 @@ private:
         {
             this->coverBgOpacity = i;
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
+
+    void jumpTo() {
+        bool ok;
+        QString pos = QInputDialog::getText(this, tr("Jump to position"),  tr("Jump to position:"), QLineEdit::Normal, "00:00", &ok);
+
+        if (ok)
+        {
+            double time = qstring2seconds(pos);
+
+            qDebug() << pos;
+            qDebug() << time;
+
+            if (time > getDuration())
+            {
+                QMessageBox msgBox;
+                msgBox.setWindowTitle("Error");
+                msgBox.setText("Incorrect position!");
+                msgBox.setStyleSheet("background-color: #101010; color: silver;");
+                msgBox.exec();
+            } else {
+                songPosition->setText(pos);
+                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, time), BASS_POS_BYTE);
+                taskbarProgress->setValue(time);
+            }
         }
     }
 

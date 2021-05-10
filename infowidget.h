@@ -40,11 +40,12 @@ private:
     QString info;
     QImage cover;
 
+    QLabel * bg;
     QLabel * trackName;
     QLabel * trackInfo;
 
-    void mousePressEvent (QMouseEvent * event) {
-        if (this->underMouse()) {
+    void mouseMoveEvent (QMouseEvent * event) {
+        if (this->underMouse() || bg->underMouse()) {
             timer->stop();
 
             QPropertyAnimation * animation = new QPropertyAnimation(this, "windowOpacity");

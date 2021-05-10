@@ -42,7 +42,7 @@ private:
 
     Ui::VisualizationWindow * ui;
 
-    int mode = 2;
+    int mode = 1;
 
     HSTREAM * channel;
 

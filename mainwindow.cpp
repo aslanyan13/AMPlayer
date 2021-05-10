@@ -180,7 +180,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     pauseBtn = new QPushButton(this);
     pauseBtn->setFont(fontAwesome);
     pauseBtn->setGeometry(380, 285, 50, 50);
-    pauseBtn->setToolTip("Play/Pause");
+    pauseBtn->setToolTip("Play/Pause (Space)");
     pauseBtn->setStyleSheet("QPushButton { font-size: 36px; border: 0px solid silver; background-color: #101010; color: silver; }");
     pauseBtn->setText("\uf04b");
     pauseBtn->setCursor(Qt::PointingHandCursor);
@@ -189,7 +189,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QPushButton * forwardBtn = new QPushButton(this);
     forwardBtn->setFont(fontAwesome);
     forwardBtn->setGeometry(455, 290, 40, 40);
-    forwardBtn->setToolTip("Next Track");
+    forwardBtn->setToolTip("Next Track (Ctrl + Right)");
     forwardBtn->setStyleSheet("QPushButton { vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #101010; color: silver; }");
     forwardBtn->setText("\uf04e");
     forwardBtn->setCursor(Qt::PointingHandCursor);
@@ -198,7 +198,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QPushButton * backwardBtn = new QPushButton(this);
     backwardBtn->setFont(fontAwesome);
     backwardBtn->setGeometry(315, 290, 40, 40);
-    backwardBtn->setToolTip("Previous Track");
+    backwardBtn->setToolTip("Previous Track (Ctrl + Left)");
     backwardBtn->setStyleSheet("QPushButton { vertical-align: middle; border: 0px solid silver; font-size: 26px; background-color: #101010; color: silver; }");
     backwardBtn->setText("\uf04a");
     backwardBtn->setCursor(Qt::PointingHandCursor);
@@ -498,10 +498,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                 if (selectedItem->text() == "Remove")
                     removeFile();
             }
-            else
-            {
-                // nothing was chosen
-            }
         }
     });
     connect (playlistWidget, SIGNAL(itemDoubleClicked(QListWidgetItem *)), this, SLOT(setActive(QListWidgetItem *)));
@@ -570,13 +566,80 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     drawPlaylist();
     drawAllPlaylists();
 
-    // this->move((rec.width() - this->size().width()) / 2, (rec.height() - this->size().height()) / 2);
     this->setGeometry(QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, this->size(), qApp->desktop()->availableGeometry()));
+
+    QShortcut * fileOpenShortcut = new QShortcut(QKeySequence(tr("Ctrl+O")), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * folderOpenShortcut = new QShortcut(QKeySequence("Ctrl+Shift+O"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * liveSpectrumShortcut = new QShortcut(QKeySequence("Ctrl+Shift+L"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * backwardShortcut = new QShortcut(QKeySequence("Ctrl+Left"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * forwardShortcut = new QShortcut(QKeySequence("Ctrl+Right"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * volumeUpShortcut = new QShortcut(QKeySequence("Ctrl+Up"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * volumeDownShortcut = new QShortcut(QKeySequence("Ctrl+Down"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * pauseShortcut = new QShortcut(QKeySequence("Space"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * exitShortcut = new QShortcut(QKeySequence("Ctrl+Q"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * jumpShortcut = new QShortcut(QKeySequence("Ctrl+J"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * forward3secShortcut = new QShortcut(QKeySequence("Right"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * backward3secShortcut = new QShortcut(QKeySequence("Left"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * removeFileShortcut = new QShortcut(QKeySequence("Delete"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * removePlaylistShortcut = new QShortcut(QKeySequence("Ctrl+Delete"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * playFileShortcut = new QShortcut(QKeySequence("Enter"), playlistWidget, nullptr, nullptr, Qt::WidgetShortcut);
+
+    connect (fileOpenShortcut, &QShortcut::activated, [=]() {
+        openFile();
+    });
+    connect (folderOpenShortcut, &QShortcut::activated, [=]() {
+        openFolder();
+    });
+    connect (liveSpectrumShortcut, &QShortcut::activated, [=]() {
+        liveSpec = !liveSpec;
+    });
+    connect (backwardShortcut, &QShortcut::activated, [=]() {
+        backward();
+    });
+    connect (forwardShortcut, &QShortcut::activated, [=]() {
+        forward();
+    });
+    connect (volumeUpShortcut, &QShortcut::activated, [=]() {
+        changeVolume(volume * 100.0f + 5);
+    });
+    connect (volumeDownShortcut, &QShortcut::activated, [=]() {
+        changeVolume(volume * 100.0f - 5);
+    });
+    connect (pauseShortcut, &QShortcut::activated, [=]() {
+        pause();
+    });
+    connect (exitShortcut, &QShortcut::activated, [=]() {
+        this->close();
+    });
+    connect (jumpShortcut, &QShortcut::activated, [=]() {
+        jumpTo();
+    });
+    connect (forward3secShortcut, &QShortcut::activated, [=]() {
+        double new_time = getPosition() + 3;
+        BASS_ChannelPause(channel);
+        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+    });
+    connect (backward3secShortcut, &QShortcut::activated, [=]() {
+        double new_time = getPosition() - 3;
+        BASS_ChannelPause(channel);
+        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+    });
+    connect (removeFileShortcut, &QShortcut::activated, [=]() {
+        removeFile();
+    });
+    connect (removePlaylistShortcut, &QShortcut::activated, [=]() {
+        removePlaylist(getPlaylistIndexByName(currentPlaylistName));
+    });
+    // Doesn't work :c
+    connect (playFileShortcut, &QShortcut::activated, [=]() {
+        if (playlistWidget->currentRow() != -1)
+            setActive(playlistWidget->currentRow());
+    });
 }
 
 MainWindow::~MainWindow()
 {
-    remove("cover.png");    // Remove Cover file
+    remove("cover.png"); // Remove Cover file
 
     QString uptime = seconds2qstring((clock() - starttime) / 1000);
     writeLog("Exiting...");
@@ -595,10 +658,20 @@ void MainWindow::menuContext () {
     QMenu myMenu;
     myMenu.setStyleSheet("background-color: #121212; color: silver");
 
-    myMenu.addAction("Open File(s)");
-    myMenu.addAction("Open Folder");
-    myMenu.addAction("Open File by URL");
-    myMenu.addAction("Add Online Radio");
+    QAction openFileAction;
+    openFileAction.setText("Open File(s)");
+    openFileAction.setIconVisibleInMenu(true);
+    openFileAction.setShortcut(QKeySequence("Ctrl+O"));
+    openFileAction.setShortcutVisibleInContextMenu(true);
+    myMenu.addAction(&openFileAction);
+
+    QAction openFolderAction;
+    openFolderAction.setText("Open Folder");
+    openFolderAction.setIconVisibleInMenu(true);
+    openFolderAction.setShortcut(QKeySequence("Ctrl+Shift+O"));
+    openFolderAction.setShortcutVisibleInContextMenu(true);
+    myMenu.addAction(&openFolderAction);
+
     myMenu.addSeparator();
     myMenu.addAction("Settings");
     myMenu.addAction("About AMPlayer");
@@ -990,7 +1063,7 @@ void MainWindow::drawPlaylist() {
 void MainWindow::setTitle () {
     QString name = playlists[playingSongPlaylist][currentID].getName();
 
-    sendMessageToRemoteDevices(name);
+    sendMessageToRemoteDevices("name|" + name);
 
     if (name.length() > 32)
         name = name.mid(0, 32) + "...";
@@ -1053,10 +1126,6 @@ void MainWindow::playlistsBarContextMenu (const QPoint& point) {
             removePlaylist(tabIndex);
         }
     }
-    else
-    {
-        // nothing was chosen
-    }
 }
 
 void MainWindow::setActive(QListWidgetItem * item) {
@@ -1066,6 +1135,8 @@ void MainWindow::setActive(QListWidgetItem * item) {
     setActive (playlistWidget->currentRow());
 }
 void MainWindow::setActive(int index) {
+    removeLoop();
+
     bool isSameTrack = false;
 
     paused = true;
@@ -1081,7 +1152,7 @@ void MainWindow::setActive(int index) {
         temp = playlists[playingSongPlaylist][index];
     }
     else if (searchSong->text() != "") {
-        temp = playlist[index].path;
+        temp = playlist[index];
     }
 
     if (!QFile::exists(temp.path))
@@ -1127,8 +1198,7 @@ void MainWindow::setActive(int index) {
         cover = QImage (":/Images/cover-placeholder.png");
     }
 
-    if (channel != NULL)
-        BASS_StreamFree(channel);
+    BASS_StreamFree(channel);
 
     if (equoEnabled) {
         channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
@@ -1147,12 +1217,6 @@ void MainWindow::setActive(int index) {
             channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, 0);
         qDebug() << BASS_ErrorGetCode();
     }
-
-    /* Will be added soon
-    if (BASS_ErrorGetCode() != 0) {
-        channel = BASS_MusicLoad(FALSE, path.toStdWString().c_str(), 0, 0, BASS_MUSIC_RAMP | BASS_SAMPLE_LOOP, 0);
-    }
-    */
 
     if (!isSameTrack)
     {
@@ -1197,6 +1261,7 @@ void MainWindow::setActive(int index) {
     infoWidget->reset();
     infoWidget->setName(temp.getName());
     infoWidget->setInfo(songInfo->text());
+    infoWidget->setDuration(len);
     infoWidget->popup(3000);
 }
 void MainWindow::forward () {
@@ -1278,6 +1343,8 @@ void MainWindow::pause()
         std::thread thr(func);
         thr.detach();
     }
+
+    sendMessageToRemoteDevices("pause|" + QString::number(paused));
 }
 void MainWindow::changeVolume (int vol)
 {
@@ -1288,8 +1355,14 @@ void MainWindow::changeVolume (int vol)
     }
     volumeSlider->setValue(vol);
     volume = vol / 100.0f;
+
+    if (volume > 1.0) volume = 1.0;
+    if (volume < 0.0) volume = 0;
+
     writeLog("Volume changed to: " + QString::number(vol));
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+
+    sendMessageToRemoteDevices("vol|" + QString::number(volume * 100));
 }
 void MainWindow::changeRepeat () {
     if (shuffle == true)
@@ -1357,6 +1430,8 @@ void MainWindow::updateTime() {
     static float songPos = getPosition();   // Static variable of song position
     static int counter = 0;                 // Passed frames counter
 
+    sendMessageToRemoteDevices("pos|" + QString::number(songPos/getDuration()));
+
     if (paused) {
         taskbarProgress->resume();
         taskbarProgress->setValue(songPos);
@@ -1386,12 +1461,17 @@ void MainWindow::updateTime() {
         QString pos = seconds2qstring(getPosition());
         songPosition->setText(pos);
 
-        if (getPosition() >= getDuration())
+        if (looped && getPosition() > loopEnd) {
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, loopStart), BASS_POS_BYTE);
+        }
+
+        if (!looped && getPosition() >= getDuration())
         {
             writeLog("Song ended");
 
             if (repeat) {
                 lastTrackID = currentID;
+                lastPlaylistName = playingSongPlaylist;
                 setActive(currentID);
             }
             else if (shuffle && playlist.size() > 1) {
@@ -1424,9 +1504,13 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 
     if (!cover.isNull() && coverLoaded) {
         QGraphicsBlurEffect * blur = new QGraphicsBlurEffect;
-        blur->setBlurRadius(10);
+        blur->setBlurRadius(3);
+
         QImage cover2 = cover.scaled(250, 250, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-        cover2 = applyEffectToImage(cover2, blur);
+
+        // Bluring background
+        if (coverBgBlur)
+            cover2 = applyEffectToImage(cover2, blur);
 
         QBrush brush(cover2);
         QTransform transform;
@@ -1478,10 +1562,14 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             path.addRoundedRect(QRectF(50 + 5 * i, 350 + 10 + (20 - h) / 2, 3, h), 2, 2);
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
-            if ((i - 1) * (getDuration() / 140) <= getPosition())
+
+            if (looped && (i * (getDuration() / 140) < loopStart || i * (getDuration() / 140) > loopEnd))
+                p.fillPath(path, QColor (128, 128, 128));
+            else if ((i - 1) * (getDuration() / 140) <= getPosition())
                 p.fillPath(path, color);
             else
                 p.fillPath(path, QColor (192, 192, 192));
+
             p.drawPath(path);
         }
     }
@@ -1494,7 +1582,9 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
 
-            if ((i - 1) * (getDuration() / 140) <= getPosition())
+            if (looped && (i * (getDuration() / 140) < loopStart || i * (getDuration() / 140) > loopEnd))
+                p.fillPath(path, QColor (128, 128, 128));
+            else if ((i - 1) * (getDuration() / 140) <= getPosition())
                 p.fillPath(path, color);
             else
                 p.fillPath(path, QColor (192, 192, 192));
@@ -1504,34 +1594,34 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     }
 }
 
-void MainWindow::prerenderFft (QString file)
+void MainWindow::prerenderFft(QString file)
 {   
-    HSTREAM tmp;
-    tmp = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
+    HSTREAM tempStream;
+    tempStream = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
     if (BASS_ErrorGetCode())
-        tmp = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
+        tempStream = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
 
     writeLog("Prerendering fft...");
 
     int k = 0;
-    QWORD len = BASS_ChannelGetLength(tmp, BASS_POS_BYTE); // the length in bytes
-    float time = BASS_ChannelBytes2Seconds(tmp, len);      // the length in seconds
+    QWORD len = BASS_ChannelGetLength(tempStream, BASS_POS_BYTE); // the length in bytes
+    float time = BASS_ChannelBytes2Seconds(tempStream, len);      // the length in seconds
 
     int avgLen = 1024;
 
-    BASS_ChannelSetAttribute(tmp, BASS_ATTRIB_VOL, 0);
-    BASS_ChannelPlay(tmp, FALSE);
+    BASS_ChannelSetAttribute(tempStream, BASS_ATTRIB_VOL, 0);
+    BASS_ChannelPlay(tempStream, FALSE);
 
     float fft[1024];
     float tempfft[140];
 
     for (float i = 0; i < time; i += time / 140, k++)
     {
-        BASS_ChannelGetData(tmp, fft, BASS_DATA_FFT2048);
+        BASS_ChannelGetData(tempStream, fft, BASS_DATA_FFT2048);
 
         vector <float> peaks;
 
-        for (int j = 0; j < 10; j++)
+        for (int j = 0; j < 50; j++)
         {
             float max = sqrt(fft[1]) * 3 * 40 - 4;
             if (max < 0) max = 0;
@@ -1560,27 +1650,29 @@ void MainWindow::prerenderFft (QString file)
         tempfft[(int)k] = avgMax;
 
         do {
-            int tmp = tempfft[(int)k] / 10;
-            if (tmp < 1) tmp = 1;
+            int value = tempfft[(int)k] / 10;
+            if (value < 1) value = 1;
 
-            prerenderedFft[(int)k] += tmp;
+            prerenderedFft[(int)k] += value;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
                 clearPrerenderedFft();
+                BASS_StreamFree(tempStream);
                 return;
             }
         } while (prerenderedFft[(int)k] < tempfft[(int)k]);
 
         if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
             clearPrerenderedFft();
+            BASS_StreamFree(tempStream);
             return;
         }
 
-        BASS_ChannelSetPosition(tmp, BASS_ChannelSeconds2Bytes(tmp, i), BASS_POS_BYTE);
+        BASS_ChannelSetPosition(tempStream, BASS_ChannelSeconds2Bytes(tempStream, i), BASS_POS_BYTE);
     }
 
-    BASS_StreamFree(tmp);
+    BASS_StreamFree(tempStream);
     writeLog("Prerendering fft ended");
 }
 
@@ -1667,13 +1759,20 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             myMenu.setStyleSheet("background-color: #121212; color: silver");
 
             myMenu.addAction("Jump to...");
-            myMenu.addAction("Make loop (A-B)");
+
+            QAction * loopAction = new QAction("Make loop (A-B)", this);
+            loopAction->setCheckable(true);
+            loopAction->setChecked(looped);
+            myMenu.addAction(loopAction);
+
             myMenu.addSeparator();
 
-            QAction * action = new QAction("Live spectrum", this);
-            action->setCheckable(true);
-            action->setChecked(liveSpec);
-            myMenu.addAction(action);
+            QAction * specAction = new QAction("Live spectrum", this);
+            specAction->setShortcut(QKeySequence("Ctrl+Shift+L"));
+            specAction->setShortcutVisibleInContextMenu(true);
+            specAction->setCheckable(true);
+            specAction->setChecked(liveSpec);
+            myMenu.addAction(specAction);
 
             // myMenu.addAction("Live spectrum");
 
@@ -1682,29 +1781,49 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             if (selectedItem)
             {
                 if (selectedItem->text() == "Jump to...")
-                {
-                    bool ok;
-                    QString pos = QInputDialog::getText(this, tr("Jump to position"),  tr("Jump to position:"), QLineEdit::Normal, "00:00", &ok);
+                    jumpTo();
+                if (looped && selectedItem->text() == "Make loop (A-B)")
+                    removeLoop();
+                else if (!looped && selectedItem->text() == "Make loop (A-B)") {
+                    QDialog dialog(this);
+                    dialog.setStyleSheet("background-color: #101010; color: silver;");
 
-                    if (ok)
-                    {
-                        double time = qstring2seconds(pos);
+                    // Use a layout allowing to have a label next to each field
+                    QFormLayout form(&dialog);
 
-                        qDebug() << pos;
-                        qDebug() << time;
+                    QLineEdit * loopStartInput = new QLineEdit(&dialog);
+                    loopStartInput->setText("00:00");
+                    loopStartInput->setFocus();
+                    form.addRow("Loop start (A): ", loopStartInput);
 
-                        if (time > getDuration())
-                        {
-                            QMessageBox msgBox;
-                            msgBox.setWindowTitle("Error");
-                            msgBox.setText("Incorrect position!");
-                            msgBox.setStyleSheet("background-color: #101010; color: silver;");
-                            msgBox.exec();
-                        } else {
-                            songPosition->setText(pos);
-                            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, time), BASS_POS_BYTE);
-                            taskbarProgress->setValue(time);
+                    QLineEdit * loopEndInput = new QLineEdit(&dialog);
+                    loopEndInput->setText("00:00");
+                    form.addRow("Loop end (B): ", loopEndInput);
+
+                    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                               Qt::Horizontal, &dialog);
+                    form.addRow(&buttonBox);
+
+                    QObject::connect(&buttonBox, SIGNAL(accepted()), &dialog, SLOT(accept()));
+                    QObject::connect(&buttonBox, SIGNAL(rejected()), &dialog, SLOT(reject()));
+
+                    if (dialog.exec() == QDialog::Accepted) {
+                        int start = qstring2seconds(loopStartInput->text());
+                        int end = qstring2seconds(loopEndInput->text());
+
+                        if (start == 0 && end >= (int)getDuration())
+                            removeLoop();
+                        else if (end - start == 0)
+                            removeLoop();
+                        else {
+                            looped = true;
+                            loopStart = start;
+                            loopEnd = end;
+                            if (getPosition() < start || getPosition() > end)
+                                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, start), BASS_POS_BYTE);
                         }
+                    } else {
+                        removeLoop();
                     }
                 }
                 if (selectedItem->text() == "Live spectrum")
@@ -1911,7 +2030,11 @@ void MainWindow::remoteDeviceConnect () {
     remoteDevices << socket;
 
     if (channel != NULL) {
-        sendMessageToRemoteDevices(playlists[currentPlaylistName][currentID].getName());
+        QString name = playlists[playingSongPlaylist][currentID].getName();
+
+        sendMessageToRemoteDevices("name|" + name);
+        sendMessageToRemoteDevices("vol|" + QString::number(volume * 100));
+        sendMessageToRemoteDevices("pos|" + QString::number(getPosition()/getDuration()));
     }
 }
 

@@ -6,11 +6,13 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     ui->setupUi(this);
 
     this->setWindowOpacity(0);
+    this->setMouseTracking(true);
     this->setGeometry(0, 0, QApplication::desktop()->screenGeometry().width(), 80);
     this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint | Qt::WindowStaysOnTopHint | Qt::Drawer);
     this->setAttribute(Qt::WA_TranslucentBackground);
 
-    QLabel * bg = new QLabel(this);
+    bg = new QLabel(this);
+    bg->setMouseTracking(true);
     bg->setGeometry(0, 0, QApplication::desktop()->screenGeometry().width(), 80);
     bg->setStyleSheet("background: rgba(0, 0, 0, 0.5);");
     bg->show();
@@ -41,7 +43,7 @@ InfoWidget::~InfoWidget()
 }
 
 void InfoWidget::popup(int duration) {
-    trackName->setText("♫ " + this->name + " ♫");
+    trackName->setText("♫ " + this->name + " [" + this->duration +  "] " + " ♫");
     trackInfo->setText(this->info);
 
     QPropertyAnimation * animation = new QPropertyAnimation(this, "windowOpacity");
