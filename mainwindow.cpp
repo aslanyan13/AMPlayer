@@ -30,6 +30,8 @@ QImage applyEffectToImage(QImage src, QGraphicsEffect * effect, int extent = 0)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    QApplication::setActiveWindow(this);
+
     if (QtWin::isCompositionEnabled())
         QtWin::extendFrameIntoClientArea(this, 0, 0, 0, 0);
     else
@@ -41,7 +43,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     taskbarProgress = windowsTaskbarButton->progress();
     taskbarProgress->show();
 
-    // taskbarProgress = new QWinTaskbarProgress(progressBar->windowHandle());
+    trayIcon = new QSystemTrayIcon(QIcon(":/Images/cover-placeholder.png"));
+    trayIcon->setVisible(false);
+    connect (trayIcon, &QSystemTrayIcon::activated, [=](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::Trigger) {
+            showWindow();
+        }
+        if (reason == QSystemTrayIcon::Context)
+            trayContext();
+    });
 
     removeControlServer = new QWebSocketServer("Remote Control Server", QWebSocketServer::NonSecureMode, this);
 
@@ -97,8 +107,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->setupUi(this);
 
     // Window settings
-    QPixmap pixmap = QPixmap::fromImage(QImage (":/Images/cover-placeholder.png"));
-    this->setWindowIcon(QIcon(pixmap));
+    this->setWindowIcon(QIcon(":/Images/cover-placeholder.png"));
     this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint); // Window transparency
     this->setStyleSheet("QMainWindow { background-color: #101010; }"
                         "QInputDialog, QInputDialog * { background-color: #101010; color: silver; }"
@@ -527,38 +536,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (equoBtn, SIGNAL(clicked()), this, SLOT(equalizer()));
     connect (timerBtn, SIGNAL(clicked()), this, SLOT(trackTimer()));
 
-    connect (remoteBtn, &QPushButton::clicked, [=]() {
-
-        if (!remoteServerEnabled) {
-            if (removeControlServer->listen(QHostAddress::Any, 9999)) {
-                qDebug() << "Remote control socket started listening in port 9999!";
-
-                remoteServerEnabled = true;
-                reloadStyles();
-
-                connect(removeControlServer, &QWebSocketServer::newConnection, this, &MainWindow::remoteDeviceConnect);
-            }
-            else {
-                qDebug() << "Failed to start socket! " << removeControlServer->errorString();
-            }
-
-            if (httpServer->listen(QHostAddress::Any, httpServerPort)) {
-                qDebug() << "Http server started with port" << httpServerPort;
-
-                connect(httpServer, &QTcpServer::newConnection, this, &MainWindow::httpNewConnection);
-            } else
-            {
-                qDebug() << "Failed to start http server!";
-            }
-        }
-
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Remote Control Server");
-        msgBox.setText("Remote control server address: " + getLocalAddress() + ":" + QString::number(httpServerPort));
-        msgBox.setStyleSheet("background-color: #101010; color: silver;");
-        msgBox.exec();
-
-    });
+    connect (remoteBtn, &QPushButton::clicked, this, &MainWindow::remoteControl);
 
     connect (visualBtn, SIGNAL(clicked()), this, SLOT(visualizations()));
     connect (volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(changeVolume(int)));
@@ -694,6 +672,68 @@ void MainWindow::menuContext () {
         if (selectedItem->text() == "Exit") {
             slot_close();
         }
+    }
+}
+void MainWindow::trayContext () {
+    QMenu myMenu;
+    myMenu.setStyleSheet("background-color: #121212; color: silver");
+    myMenu.addAction("Show window");
+    myMenu.addSeparator();
+    myMenu.addAction(paused ? "Pause" : "Play");
+    myMenu.addAction("Backward");
+    myMenu.addAction("Forward");
+    myMenu.addSeparator();
+
+    QAction repeatAction;
+    repeatAction.setText("Repeat");
+    repeatAction.setCheckable(true);
+    repeatAction.setChecked(repeat);
+    myMenu.addAction(&repeatAction);
+
+    QAction shuffleAction;
+    shuffleAction.setText("Shuffle");
+    shuffleAction.setCheckable(true);
+    shuffleAction.setChecked(shuffle);
+    myMenu.addAction(&shuffleAction);
+
+    myMenu.addSeparator();
+    myMenu.addAction("Equalizer");
+    myMenu.addAction("Visualization");
+    myMenu.addAction("Remote control");
+    myMenu.addSeparator();
+    myMenu.addAction("Exit");
+
+    QAction * selectedItem = myMenu.exec(trayIcon->geometry().center());
+
+    if (selectedItem)
+    {
+        if (selectedItem->text() == "Show window") {
+            showWindow();
+        }
+        if (selectedItem->text() == "Play" || selectedItem->text() == "Pause") {
+            pause();
+        }
+        if (selectedItem->text() == "Backward") {
+            backward();
+        }
+        if (selectedItem->text() == "Forward") {
+            forward();
+        }
+        if (selectedItem->text() == "Repeat")
+            changeRepeat();
+        if (selectedItem->text() == "Shuffle")
+            changeShuffle();
+        if (selectedItem->text() == "Equalizer") {
+            equalizer();
+        }
+        if (selectedItem->text() == "Visualization") {
+            visualizations();
+        }
+        if (selectedItem->text() == "Remote control") {
+            remoteControl();
+        }
+        if (selectedItem->text() == "Exit")
+            this->close();
     }
 }
 // Open File
@@ -1492,7 +1532,8 @@ void MainWindow::updateTime() {
     }
 
     colorChange();
-    repaint();
+    if (!this->isHidden())
+        repaint();
 }
 
 void MainWindow::paintEvent(QPaintEvent * event) {
@@ -2028,6 +2069,8 @@ void MainWindow::remoteDeviceConnect () {
     connect(socket, &QWebSocket::disconnected, this, &MainWindow::deviceDisconnected);
 
     remoteDevices << socket;
+
+    trayIcon->showMessage("Device connected", "New remote control device connected!", QSystemTrayIcon::Information, 1000);
 
     if (channel != NULL) {
         QString name = playlists[playingSongPlaylist][currentID].getName();

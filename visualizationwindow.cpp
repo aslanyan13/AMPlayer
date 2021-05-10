@@ -10,6 +10,8 @@ VisualizationWindow::VisualizationWindow(QWidget * parent, HSTREAM * chan) : QWi
 
     ui->setupUi(this);
 
+    this->setWindowIcon(QIcon(":/Images/cover-placeholder.png"));
+    this->setWindowTitle("Visualizations");
     this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint/* | Qt::WindowStaysOnTopHint*/); // Window transparency
     this->setAttribute(Qt::WA_TranslucentBackground);
     this->setMouseTracking(true);
@@ -55,6 +57,8 @@ VisualizationWindow::VisualizationWindow(QWidget * parent, HSTREAM * chan) : QWi
     minimizeBtn->show();
 
     connect (drawTimer, &QTimer::timeout, [=]() {
+        if (this->isHidden()) return;
+
         repaint();
 
         if (this->underMouse())

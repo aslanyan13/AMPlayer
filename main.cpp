@@ -11,6 +11,16 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     QApplication a(argc, argv);
+    a.setWindowIcon(QIcon(":/Images/cover-placeholder.png"));
+    a.setApplicationDisplayName("AMPlayer");
+    a.setApplicationName("AMPlayer");
+    a.setDesktopFileName("AMPlayer");
+    a.setObjectName("AMPlayer");
+    a.setStartDragTime(1000);
+    a.setQuitOnLastWindowClosed(false);
+
+    for (int i = 1; i <= 5; i++)
+        a.setEffectEnabled((Qt::UIEffect)i, true);
 
     if (!BASS_Init(-1, 44100, BASS_DEVICE_16BITS | BASS_DEVICE_STEREO, 0, NULL)) {
         QMessageBox msgBox;

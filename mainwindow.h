@@ -2,9 +2,11 @@
 #define MAINWINDOW_H
 
 // Qt libraries
+#include <QApplication>
 #include <QMainWindow>
 #include <QPushButton>
 #include <QPaintEvent>
+#include <QSystemTrayIcon>
 #include <QPainterPath>
 #include <QListWidget>
 #include <QProgressBar>
@@ -105,6 +107,7 @@ private slots:
     void removePlaylist(int index);
 
     void menuContext ();
+    void trayContext ();
     void playlistsBarContextMenu (const QPoint&);
     void changeCurrentPlaylist (int index);
 
@@ -153,14 +156,6 @@ private slots:
         msgBox.exec();
     }
     void equalizer () {
-        /*
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Equalizer");
-        msgBox.setText("Equalizer will be added soon!");
-        msgBox.setStyleSheet("background-color: #101010; color: silver;");
-        msgBox.exec();
-        */
-
         equalizerWin->raise();
         equalizerWin->show();
         equalizerWin->move (this->pos().x() + (this->size().width() - equalizerWin->size().width()) / 2, this->pos().y() + (this->size().height() - equalizerWin->size().height()) / 2);
@@ -170,8 +165,18 @@ private slots:
 
     void colorChange();
 
-    void slot_minimize() { setWindowState(Qt::WindowMinimized); };
-    void slot_close() { this->close(); };
+    void slot_minimize() {
+        trayIcon->setVisible(true);
+        this->hide();
+    };
+    void slot_close() {
+        this->close();
+    };
+    void showWindow () {
+        this->show();
+        this->setFocus();
+        trayIcon->setVisible(false);
+    }
 
     void rowsMoved(QModelIndex, int, int, QModelIndex, int);
 
@@ -252,6 +257,8 @@ private:
     QPushButton * closeBtn;
     QPushButton * minimizeBtn;
 
+    QSystemTrayIcon * trayIcon;
+
     QPoint lastMousePosition;
     bool moving;
 
@@ -269,6 +276,36 @@ private:
     QTcpServer * httpServer;
     QList <QWebSocket *> remoteDevices;
 
+    void remoteControl() {
+        if (!remoteServerEnabled) {
+            if (removeControlServer->listen(QHostAddress::Any, 9999)) {
+                qDebug() << "Remote control socket started listening in port 9999!";
+
+                remoteServerEnabled = true;
+                reloadStyles();
+
+                connect(removeControlServer, &QWebSocketServer::newConnection, this, &MainWindow::remoteDeviceConnect);
+            }
+            else {
+                qDebug() << "Failed to start socket! " << removeControlServer->errorString();
+            }
+
+            if (httpServer->listen(QHostAddress::Any, httpServerPort)) {
+                qDebug() << "Http server started with port" << httpServerPort;
+
+                connect(httpServer, &QTcpServer::newConnection, this, &MainWindow::httpNewConnection);
+            } else
+            {
+                qDebug() << "Failed to start http server!";
+            }
+        }
+
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Remote Control Server");
+        msgBox.setText("Remote control server address: " + getLocalAddress() + ":" + QString::number(httpServerPort));
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
+        msgBox.exec();
+    }
     void sendMessageToRemoteDevices (QString message) {
         for (auto & device : remoteDevices) {
             device->sendTextMessage(message);
@@ -296,6 +333,8 @@ private:
         this->equalizerWin->close();
         this->settingsWin->close();
         this->visualWin->close();
+        this->trayIcon->setVisible(false);
+        QApplication::exit();
     };
 
     void paintEvent(QPaintEvent * event);

@@ -15,6 +15,7 @@ settingsWindow::settingsWindow(QWidget *parent) : QWidget(parent), ui(new Ui::se
 
     // setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint | Qt::Window); // Window transparency
 
+    this->setWindowIcon(QIcon(":/Images/cover-placeholder.png"));
     this->setStyleSheet("QWidget { background-color: #141414; color: silver; }");
     this->setWindowTitle("Settings");
 
