@@ -19,6 +19,7 @@
 #include <gdiplus.h>
 #include <gdiplus/gdiplusheaders.h>
 #include <string>
+#include <map>
 
 #include <id3v2tag.h>
 #include <mpegfile.h>
@@ -42,6 +43,7 @@ private:
     float bitrate;
 public:
     QString path = "";
+    map <double, QString> marks;
 
     Song();
     Song(QString p) : path(p) {

@@ -6,6 +6,9 @@
 #include <QString>
 #include <QXmlStreamReader>
 #include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 #include <iostream>
 #include <vector>

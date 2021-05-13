@@ -30,7 +30,39 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
 
                 if (xmlReader.name() == "song" && attribute_value != "")
                 {
+                    QString jsonData;
+
+                    foreach(const QXmlStreamAttribute &attr, xmlReader.attributes()) {
+                        if (attr.name().toString() == "marks") {
+                            jsonData = attr.value().toString();
+                        }
+                    }
+
+                    QJsonObject obj;
+                    QJsonDocument doc = QJsonDocument::fromJson(jsonData.toUtf8());
+
+                    if(!doc.isNull())
+                    {
+                        if(doc.isObject())
+                        {
+                            obj = doc.object();
+                        }
+                        else
+                        {
+                            qDebug() << "Document is not an object";
+                        }
+                    }
+                    else
+                    {
+                        qDebug() << "Invalid JSON...\n" << jsonData;
+                    }
+
                     Song temp(xmlReader.readElementText());
+                    foreach(const QString& key, obj.keys()) {
+                        QJsonValue value = obj.value(key);
+                        // qDebug() << "Key = " << key << ", Value = " << value.toString();
+                        temp.marks[key.toDouble()] = value.toString();
+                    }
 
                     if (!QFile::exists(temp.path)) continue;
 
@@ -90,7 +122,21 @@ void PlaylistReader::writePlaylists(fifo_map<QString, vector<Song>> playlists)
             for (int i = 0; i < playlist.second.size(); i++)
             {
                 xmlWriter.writeStartElement("song");
+
+                QString json = "{ ";
+                int j = 1;
+                for (auto & mark : playlist.second[i].marks)
+                {
+
+                    json += "\"" +  QString::number(mark.first) + "\": \"" + mark.second + "\"";
+                    if (j != playlist.second[i].marks.size()) json += ",";
+                    j++;
+                }
+                json += "}";
+
+                xmlWriter.writeAttribute("marks", json);
                 xmlWriter.writeCharacters(playlist.second[i].path);
+
                 xmlWriter.writeEndElement();
             }
 

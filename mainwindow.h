@@ -123,7 +123,7 @@ private slots:
     void changeRepeat ();
     void changeShuffle ();
 
-
+    void makeLoop();
     void updateTime();
 
     void remoteDeviceConnect ();
@@ -180,6 +180,11 @@ private slots:
 
     void rowsMoved(QModelIndex, int, int, QModelIndex, int);
 
+    void addMark();
+    void removeMark();
+    void editMark();
+    void drawMarksList();
+
 private:
     HSTREAM channel;
 
@@ -187,8 +192,8 @@ private:
     bool paused = true;
     bool repeat = false;
     bool shuffle = false;
-    bool liveSpec = false;
-    bool colorChanging = false;
+    bool liveSpec = false; // Is live spectrum mode enabled
+    bool colorChanging = false; // Is color changing mode enabled
     bool coverLoaded = true;
     bool coverBgBlur = true;
     bool logging = true;
@@ -264,13 +269,16 @@ private:
 
     QTimer * timer;
 
-    Ui::MainWindow *ui;
+    Ui::MainWindow * ui;
 
     InfoWidget * infoWidget = nullptr;
     PlaylistReader * XMLreader = nullptr;
     settingsWindow * settingsWin = nullptr;
     equalizerWindow * equalizerWin = nullptr;
     VisualizationWindow * visualWin = nullptr;
+
+    QWidget * marksWin = nullptr;
+    QListWidget * marksList;
 
     QWebSocketServer * removeControlServer;
     QTcpServer * httpServer;
@@ -407,7 +415,7 @@ private:
             qDebug() << pos;
             qDebug() << time;
 
-            if (time > getDuration())
+            if (time > getDuration() || time == -1)
             {
                 QMessageBox msgBox;
                 msgBox.setWindowTitle("Error");

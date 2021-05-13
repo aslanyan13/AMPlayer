@@ -45,6 +45,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     trayIcon = new QSystemTrayIcon(QIcon(":/Images/cover-placeholder.png"));
     trayIcon->setVisible(false);
+    trayIcon->setToolTip("AMPlayer");
     connect (trayIcon, &QSystemTrayIcon::activated, [=](QSystemTrayIcon::ActivationReason reason) {
         if (reason == QSystemTrayIcon::Trigger) {
             showWindow();
@@ -132,10 +133,79 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
 
     settingsWin = new settingsWindow();
+
     equalizerWin = new equalizerWindow();
     equalizerWin->mainColorStr = &mainColorStr;
     equalizerWin->reloadStyles();
+
     visualWin = new VisualizationWindow(nullptr, &channel);
+
+    marksWin = new QWidget();
+    marksWin->setMaximumSize(300, 350);
+    marksWin->setMinimumSize(300, 350);
+    marksWin->setWindowIcon(QIcon(":/Images/cover-placeholder.png"));
+    marksWin->setStyleSheet("background: #101010; color: silver;");
+    marksWin->setWindowFlags(Qt::Drawer);
+    marksWin->setWindowTitle("Marks");
+    marksWin->setGeometry(this->pos().x() + (this->size().width() - 300) / 2, this->pos().y() + (this->size().height() - 350) / 2, 300, 350);
+
+    marksList = new QListWidget(marksWin);
+    marksList->setGeometry(10, 10, 280, 290);
+    marksList->setContextMenuPolicy(Qt::CustomContextMenu);
+    marksList->setStyleSheet("QListWidget { font-size: 13px; border: 1px solid transparent; outline: none; background-color: #141414; color: silver; padding: 5px; }"
+                             "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }"
+                             "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
+    marksList->show();
+
+    QPushButton * addMarkBtn = new QPushButton(marksWin);
+    addMarkBtn->setFont(fontAwesome);
+    addMarkBtn->setGeometry(10, 290, 280, 30);
+    addMarkBtn->setCursor(Qt::PointingHandCursor);
+    addMarkBtn->setStyleSheet("QPushButton { font-size: 14px; background: #181818; color: silver; border: 0px solid black; }");
+    addMarkBtn->setText("\uf067");
+
+    QLabel * hint = new QLabel(marksWin);
+    hint->setGeometry(10, 330, 280, 20);
+    hint->setStyleSheet("font-size: 10px; color: gray;");
+    hint->setAlignment(Qt::AlignVCenter);
+    hint->setText("*Hint: Double-click to jump to mark, right click to edit");
+
+    connect (addMarkBtn, SIGNAL(clicked()), this, SLOT(addMark()));
+    connect (marksList, &QListWidget::customContextMenuRequested, [=](const QPoint& point) {
+        int itemIndex = marksList->indexAt(point).row();
+        qDebug() << itemIndex;
+
+        QPoint globalPos = marksList->mapToGlobal(point);
+
+        QMenu myMenu;
+
+        myMenu.addAction("Edit");
+        myMenu.addAction("Remove");
+
+        myMenu.setStyleSheet("QMenu { icon-size: 8px; background-color: #101010; color: silver; }");
+
+        QAction * selectedItem = myMenu.exec(globalPos);
+
+        if (selectedItem)
+        {
+            if (selectedItem->text() == "Edit") {
+
+            }
+            if (selectedItem->text() == "Remove")
+                removeMark();
+        }
+    });
+
+    connect (marksList, &QListWidget::itemDoubleClicked, [=](QListWidgetItem * item) {
+        QString itemText = item->text();
+        int start = itemText.indexOf('[');
+        int end = itemText.mid(start + 1).indexOf(']');
+
+        QString timecode = itemText.mid(start + 1, end);
+        qDebug() << timecode << " - " << qstring2seconds(timecode);
+
+        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, qstring2seconds(timecode)), BASS_POS_BYTE);
+    });
 
     infoWidget = new InfoWidget();
     infoWidget->show();
@@ -487,12 +557,27 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             QPoint globalPos = playlistWidget->mapToGlobal(point);
 
             QMenu myMenu;
-            myMenu.setFont(fontAwesome);
-            myMenu.setStyleSheet("background-color: #101010; color: silver");
-            myMenu.addAction("Play");
+
+            QAction playAction;
+            playAction.setText("Play");
+            playAction.setObjectName("play");
+            playAction.setIconVisibleInMenu(true);
+            myMenu.addAction(&playAction);
+
             myMenu.addSeparator();
-            myMenu.addAction("Edit");
+
+            QAction editAction;
+            editAction.setText("Edit");
+            editAction.setObjectName("edit");
+            editAction.setIconVisibleInMenu(true);
+            myMenu.addAction(&editAction);
+
             myMenu.addAction("Remove");
+
+            myMenu.setStyleSheet("QMenu { icon-size: 8px; background-color: #101010; color: silver; }"
+                                 "QMenu::item#play { icon-size: 8px; }"
+                                 "QMenu::item#edit { icon-size: 12px; }"
+                                 "QMenu::item { background: transparent; }");
 
             QAction * selectedItem = myMenu.exec(globalPos);
 
@@ -556,6 +641,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QShortcut * pauseShortcut = new QShortcut(QKeySequence("Space"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * exitShortcut = new QShortcut(QKeySequence("Ctrl+Q"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * jumpShortcut = new QShortcut(QKeySequence("Ctrl+J"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * loopShortcut = new QShortcut(QKeySequence("Ctrl+L"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * forward3secShortcut = new QShortcut(QKeySequence("Right"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * backward3secShortcut = new QShortcut(QKeySequence("Left"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * removeFileShortcut = new QShortcut(QKeySequence("Delete"), this, nullptr, nullptr, Qt::ApplicationShortcut);
@@ -592,6 +678,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (jumpShortcut, &QShortcut::activated, [=]() {
         jumpTo();
     });
+    connect (loopShortcut, SIGNAL(activated()), this, SLOT(makeLoop()));
     connect (forward3secShortcut, &QShortcut::activated, [=]() {
         double new_time = getPosition() + 3;
         BASS_ChannelPause(channel);
@@ -675,35 +762,98 @@ void MainWindow::menuContext () {
     }
 }
 void MainWindow::trayContext () {
+    auto pos = QCursor::pos();
+
     QMenu myMenu;
-    myMenu.setStyleSheet("background-color: #121212; color: silver");
-    myMenu.addAction("Show window");
+    myMenu.setStyleSheet("padding-left: 10px; padding-top: 3px; icon-size: 12px; background-color: #121212; color: silver");
+
+    QAction windowAction;
+    windowAction.setIcon(QIcon(":/Images/window-maximize-regular.png"));
+    windowAction.setText("Show window");
+    windowAction.setObjectName("show-window");
+    windowAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&windowAction);
+
     myMenu.addSeparator();
-    myMenu.addAction(paused ? "Pause" : "Play");
-    myMenu.addAction("Backward");
-    myMenu.addAction("Forward");
+
+    QAction playAction;
+    playAction.setIcon(paused ? QIcon(":/Images/pause-solid.png") : QIcon(":/Images/play-solid.png"));
+    playAction.setText(paused ? "Pause" : "Play");
+    playAction.setObjectName("play");
+    playAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&playAction);
+
+    QAction backwardAction;
+    backwardAction.setIcon(QIcon(":/Images/backward-solid.png"));
+    backwardAction.setText("Backward");
+    backwardAction.setObjectName("backward");
+    backwardAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&backwardAction);
+
+    QAction forwardAction;
+    forwardAction.setIcon(QIcon(":/Images/forward-solid.png"));
+    forwardAction.setText("Forward");
+    forwardAction.setObjectName("forward");
+    forwardAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&forwardAction);
+
     myMenu.addSeparator();
+
+    QAction marksAction;
+    marksAction.setText("Marks");
+    marksAction.setIcon(QIcon(":/Images/bookmark-regular.png"));
+    marksAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&marksAction);
 
     QAction repeatAction;
     repeatAction.setText("Repeat");
+    repeatAction.setIcon(QIcon(":/Images/repeat.png"));
     repeatAction.setCheckable(true);
     repeatAction.setChecked(repeat);
+    repeatAction.setIconVisibleInMenu(true);
     myMenu.addAction(&repeatAction);
 
     QAction shuffleAction;
     shuffleAction.setText("Shuffle");
+    shuffleAction.setIcon(QIcon(":/Images/random-solid.png"));
     shuffleAction.setCheckable(true);
     shuffleAction.setChecked(shuffle);
+    shuffleAction.setIconVisibleInMenu(true);
     myMenu.addAction(&shuffleAction);
 
     myMenu.addSeparator();
-    myMenu.addAction("Equalizer");
-    myMenu.addAction("Visualization");
-    myMenu.addAction("Remote control");
-    myMenu.addSeparator();
-    myMenu.addAction("Exit");
 
-    QAction * selectedItem = myMenu.exec(trayIcon->geometry().center());
+    QAction equoAction;
+    equoAction.setText("Equalizer");
+    equoAction.setIcon(QIcon(":/Images/sliders-h-solid.png"));
+    equoAction.setCheckable(true);
+    equoAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&equoAction);
+
+    QAction visualAction;
+    visualAction.setText("Visualization");
+    visualAction.setIcon(QIcon(":/Images/tv-solid.png"));
+    visualAction.setCheckable(true);
+    visualAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&visualAction);
+
+    QAction remoteAction;
+    remoteAction.setText("Remote control");
+    remoteAction.setIcon(QIcon(":/Images/mobile-solid.png"));
+    remoteAction.setCheckable(true);
+    remoteAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&remoteAction);
+
+    myMenu.addSeparator();
+
+    QAction exitAction;
+    exitAction.setText("Exit");
+    exitAction.setIcon(QIcon(":/Images/times-solid.png"));
+    exitAction.setCheckable(true);
+    exitAction.setIconVisibleInMenu(true);
+    myMenu.addAction(&exitAction);
+
+    QAction * selectedItem = myMenu.exec(pos);
 
     if (selectedItem)
     {
@@ -719,6 +869,8 @@ void MainWindow::trayContext () {
         if (selectedItem->text() == "Forward") {
             forward();
         }
+        if (selectedItem->text() == "Marks")
+            marksWin->show();
         if (selectedItem->text() == "Repeat")
             changeRepeat();
         if (selectedItem->text() == "Shuffle")
@@ -843,6 +995,8 @@ void MainWindow::removeFile() {
     {
         BASS_StreamFree(channel);
         channel = NULL;
+        marksList->clear();
+        marksWin->close();
         songTitle->setText("");
         songInfo->setText("");
         pauseBtn->setText("\uf04b");
@@ -997,6 +1151,8 @@ void MainWindow::removePlaylist (int index) {
         {
             BASS_StreamFree(channel);
             channel = NULL;
+            marksList->clear();
+            marksWin->close();
             pauseBtn->setText("\uf04b");
             songTitle->setText("");
             songInfo->setText("");
@@ -1035,6 +1191,9 @@ void MainWindow::search(const QString & text)
 {
     qDebug() << text;
     writeLog("Searching query: " + text);
+
+    if (text.length() == 1 && currentPlaylistName == playingSongPlaylist)
+        playlists[playingSongPlaylist][currentID] = playlist[currentID];
 
     searchInPlaylist(text);
     drawPlaylist();
@@ -1195,6 +1354,7 @@ void MainWindow::setActive(int index) {
         temp = playlist[index];
     }
 
+
     if (!QFile::exists(temp.path))
     {
         QMessageBox msgBox;
@@ -1218,7 +1378,11 @@ void MainWindow::setActive(int index) {
     }
 
     currentID = std::find(playlists[playingSongPlaylist].begin(), playlists[playingSongPlaylist].end(), temp) - playlists[playingSongPlaylist].begin();
-    cover = playlists[playingSongPlaylist][currentID].getCover();
+    temp = playlists[playingSongPlaylist][currentID];
+    cover = temp.getCover();
+
+    if (currentID > playlists[playingSongPlaylist].size())
+        qDebug() << "Error!";
 
     TagLib::FileRef file(temp.path.toStdWString().c_str());
 
@@ -1303,6 +1467,11 @@ void MainWindow::setActive(int index) {
     infoWidget->setInfo(songInfo->text());
     infoWidget->setDuration(len);
     infoWidget->popup(3000);
+
+    drawMarksList();
+
+    trayIcon->setToolTip("Now playing: " + temp.getName());
+    this->setWindowTitle(temp.getName());
 }
 void MainWindow::forward () {
     if (channel == NULL || playlists[playingSongPlaylist].size() == 1)
@@ -1436,8 +1605,8 @@ void MainWindow::changeShuffle () {
 }
 
 QString MainWindow::seconds2qstring (float seconds) {
-    int hours = (seconds > 3600) ? (int)seconds / 3600 : 0;
-    int minutes = (seconds > 60) ? ((int)seconds - hours * 3600) / 60 : 0;
+    int hours = (seconds >= 3600) ? (int)seconds / 3600 : 0;
+    int minutes = (seconds >= 60) ? ((int)seconds - hours * 3600) / 60 : 0;
     int secs = (int)seconds % 60;
 
     QString result = "";
@@ -1464,8 +1633,62 @@ double MainWindow::qstring2seconds (QString time) {
 
         return minutes * 60.0 + seconds;
     }
-}
+    // Check if mark name used
+    if (time[0] == ':' && time[time.length() - 1] == ':') {
+        QString markTag = time.mid(1, time.length() - 2);
 
+        qDebug() << markTag;
+
+        for (auto &mark : playlists[playingSongPlaylist][currentID].marks) {
+            if (mark.second == markTag)
+                return mark.first;
+        }
+
+        return -1;
+    }
+}
+void MainWindow::makeLoop() {
+    QDialog dialog(this);
+    dialog.setStyleSheet("background-color: #101010; color: silver;");
+
+    // Use a layout allowing to have a label next to each field
+    QFormLayout form(&dialog);
+
+    QLineEdit * loopStartInput = new QLineEdit(&dialog);
+    loopStartInput->setText("00:00");
+    loopStartInput->setFocus();
+    form.addRow("Loop start (A): ", loopStartInput);
+
+    QLineEdit * loopEndInput = new QLineEdit(&dialog);
+    loopEndInput->setText("00:00");
+    form.addRow("Loop end (B): ", loopEndInput);
+
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                               Qt::Horizontal, &dialog);
+    form.addRow(&buttonBox);
+
+    QObject::connect(&buttonBox, SIGNAL(accepted()), &dialog, SLOT(accept()));
+    QObject::connect(&buttonBox, SIGNAL(rejected()), &dialog, SLOT(reject()));
+
+    if (dialog.exec() == QDialog::Accepted) {
+        int start = qstring2seconds(loopStartInput->text());
+        int end = qstring2seconds(loopEndInput->text());
+
+        if (start == 0 && end >= (int)getDuration())
+            removeLoop();
+        else if (end - start == 0)
+            removeLoop();
+        else {
+            looped = true;
+            loopStart = start;
+            loopEnd = end;
+            if (getPosition() < start || getPosition() > end)
+                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, start), BASS_POS_BYTE);
+        }
+    } else {
+        removeLoop();
+    }
+}
 void MainWindow::updateTime() {
     static float songPos = getPosition();   // Static variable of song position
     static int counter = 0;                 // Passed frames counter
@@ -1586,6 +1809,13 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 
     QColor color = mainColor;
 
+    vector <int> marksPos;
+    if (currentID != -1) {
+        for (auto &mark : playlists[playingSongPlaylist][currentID].marks) {
+            marksPos.push_back((mark.first / getDuration() * 140) + 1);
+        }
+    }
+
     if (liveSpec) {
         float fft[1024];
         BASS_ChannelGetData(channel, fft, BASS_DATA_FFT2048);
@@ -1604,12 +1834,16 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
 
-            if (looped && (i * (getDuration() / 140) < loopStart || i * (getDuration() / 140) > loopEnd))
-                p.fillPath(path, QColor (128, 128, 128));
-            else if ((i - 1) * (getDuration() / 140) <= getPosition())
-                p.fillPath(path, color);
-            else
-                p.fillPath(path, QColor (192, 192, 192));
+            if (std::count(marksPos.begin(), marksPos.end(), i) != 0) {
+                p.fillPath(path, QColor (255, 255, 255));
+            } else {
+                if (looped && (i * (getDuration() / 140) < loopStart || i * (getDuration() / 140) > loopEnd))
+                    p.fillPath(path, QColor (128, 128, 128));
+                else if ((i - 1) * (getDuration() / 140) <= getPosition())
+                    p.fillPath(path, color);
+                else
+                    p.fillPath(path, QColor (192, 192, 192));
+            }
 
             p.drawPath(path);
         }
@@ -1623,12 +1857,16 @@ void MainWindow::paintEvent(QPaintEvent * event) {
             QPen pen(Qt::transparent, 0);
             p.setPen(pen);
 
-            if (looped && (i * (getDuration() / 140) < loopStart || i * (getDuration() / 140) > loopEnd))
-                p.fillPath(path, QColor (128, 128, 128));
-            else if ((i - 1) * (getDuration() / 140) <= getPosition())
-                p.fillPath(path, color);
-            else
-                p.fillPath(path, QColor (192, 192, 192));
+            if (std::count(marksPos.begin(), marksPos.end(), i) != 0) {
+                p.fillPath(path, QColor (255, 255, 255));
+            } else {
+                if (looped && (i * (getDuration() / 140) < loopStart || i * (getDuration() / 140) > loopEnd))
+                    p.fillPath(path, QColor (128, 128, 128));
+                else if ((i - 1) * (getDuration() / 140) <= getPosition())
+                    p.fillPath(path, color);
+                else
+                    p.fillPath(path, QColor (192, 192, 192));
+            }
 
             p.drawPath(path);
         }
@@ -1655,6 +1893,8 @@ void MainWindow::prerenderFft(QString file)
 
     float fft[1024];
     float tempfft[140];
+
+    qDebug() << playingSongPlaylist << currentID;
 
     for (float i = 0; i < time; i += time / 140, k++)
     {
@@ -1697,6 +1937,8 @@ void MainWindow::prerenderFft(QString file)
             prerenderedFft[(int)k] += value;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            if (currentID >= this->playlists[playingSongPlaylist].size())
+                return;
             if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
                 clearPrerenderedFft();
                 BASS_StreamFree(tempStream);
@@ -1704,6 +1946,8 @@ void MainWindow::prerenderFft(QString file)
             }
         } while (prerenderedFft[(int)k] < tempfft[(int)k]);
 
+        if (currentID >= this->playlists[playingSongPlaylist].size())
+            return;
         if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
             clearPrerenderedFft();
             BASS_StreamFree(tempStream);
@@ -1797,7 +2041,8 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
 
             QMenu myMenu;
             myMenu.setMouseTracking(true);
-            myMenu.setStyleSheet("background-color: #121212; color: silver");
+            myMenu.setStyleSheet("QMenu { background-color: #121212; color: silver }"
+                                 "QMenu::item:disabled { color: gray; }");
 
             myMenu.addAction("Jump to...");
 
@@ -1805,6 +2050,10 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             loopAction->setCheckable(true);
             loopAction->setChecked(looped);
             myMenu.addAction(loopAction);
+
+            QAction * marksAction = new QAction("Marks", this);
+            marksAction->setDisabled((currentID == -1));
+            myMenu.addAction(marksAction);
 
             myMenu.addSeparator();
 
@@ -1815,57 +2064,23 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             specAction->setChecked(liveSpec);
             myMenu.addAction(specAction);
 
-            // myMenu.addAction("Live spectrum");
-
             QAction * selectedItem = myMenu.exec(mapToGlobal(QPoint(mouseX, mouseY)));
 
             if (selectedItem)
             {
                 if (selectedItem->text() == "Jump to...")
                     jumpTo();
+                if (selectedItem->text() == "Marks")
+                {
+                    marksWin->raise();
+                    marksWin->show();
+                    marksWin->move (this->pos().x() + (this->size().width() - marksWin->size().width()) / 2, this->pos().y() + (this->size().height() - marksWin->size().height()) / 2);
+                    marksWin->setFocus();
+                }
                 if (looped && selectedItem->text() == "Make loop (A-B)")
                     removeLoop();
                 else if (!looped && selectedItem->text() == "Make loop (A-B)") {
-                    QDialog dialog(this);
-                    dialog.setStyleSheet("background-color: #101010; color: silver;");
-
-                    // Use a layout allowing to have a label next to each field
-                    QFormLayout form(&dialog);
-
-                    QLineEdit * loopStartInput = new QLineEdit(&dialog);
-                    loopStartInput->setText("00:00");
-                    loopStartInput->setFocus();
-                    form.addRow("Loop start (A): ", loopStartInput);
-
-                    QLineEdit * loopEndInput = new QLineEdit(&dialog);
-                    loopEndInput->setText("00:00");
-                    form.addRow("Loop end (B): ", loopEndInput);
-
-                    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                               Qt::Horizontal, &dialog);
-                    form.addRow(&buttonBox);
-
-                    QObject::connect(&buttonBox, SIGNAL(accepted()), &dialog, SLOT(accept()));
-                    QObject::connect(&buttonBox, SIGNAL(rejected()), &dialog, SLOT(reject()));
-
-                    if (dialog.exec() == QDialog::Accepted) {
-                        int start = qstring2seconds(loopStartInput->text());
-                        int end = qstring2seconds(loopEndInput->text());
-
-                        if (start == 0 && end >= (int)getDuration())
-                            removeLoop();
-                        else if (end - start == 0)
-                            removeLoop();
-                        else {
-                            looped = true;
-                            loopStart = start;
-                            loopEnd = end;
-                            if (getPosition() < start || getPosition() > end)
-                                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, start), BASS_POS_BYTE);
-                        }
-                    } else {
-                        removeLoop();
-                    }
+                    makeLoop();
                 }
                 if (selectedItem->text() == "Live spectrum")
                 {
@@ -2152,4 +2367,59 @@ void MainWindow::deviceDisconnected()
         remoteDevices.removeAll(pClient);
         pClient->deleteLater();
     }
+}
+//           --- Marks Functions ---
+void MainWindow::addMark() {
+    QDialog dialog(marksWin);
+    dialog.setStyleSheet("background-color: #101010; color: silver;");
+
+    // Use a layout allowing to have a label next to each field
+    QFormLayout form(&dialog);
+
+    QLineEdit * timecodeInput = new QLineEdit(&dialog);
+    timecodeInput->setText("00:00");
+    timecodeInput->setFocus();
+    form.addRow("Timecode: ", timecodeInput);
+
+    QLineEdit * descInput = new QLineEdit(&dialog);
+    descInput->setText("");
+    form.addRow("Description: ", descInput);
+
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                               Qt::Horizontal, &dialog);
+    form.addRow(&buttonBox);
+
+    QObject::connect(&buttonBox, SIGNAL(accepted()), &dialog, SLOT(accept()));
+    QObject::connect(&buttonBox, SIGNAL(rejected()), &dialog, SLOT(reject()));
+
+    if (dialog.exec() == QDialog::Accepted) {
+        double timecode = qstring2seconds(timecodeInput->text());
+        playlists[playingSongPlaylist][currentID].marks[timecode] = descInput->text();
+        if (currentPlaylistName == playingSongPlaylist)
+            playlist[currentID].marks = playlists[playingSongPlaylist][currentID].marks;
+    }
+
+    drawMarksList();
+}
+void MainWindow::removeMark() {
+    QString itemText = marksList->currentItem()->text();
+    int start = itemText.indexOf('[');
+    int end = itemText.mid(start + 1).indexOf(']');
+
+    QString timecode = itemText.mid(start + 1, end);
+
+    playlists[playingSongPlaylist][currentID].marks.erase(qstring2seconds(timecode));
+    if (currentPlaylistName == playingSongPlaylist)
+        playlist[currentID].marks = playlists[playingSongPlaylist][currentID].marks;
+
+    drawMarksList();
+}
+void MainWindow::editMark() {
+
+}
+void MainWindow::drawMarksList () {
+    marksList->clear();
+
+    for (auto & mark : playlists[playingSongPlaylist][currentID].marks)
+        marksList->addItem("[" + seconds2qstring(mark.first) + "] " + mark.second);
 }
