@@ -66,8 +66,13 @@
 
 // Bass header files
 #include "bass.h"
+#include "bassopus.h"
+#include "bass_ape.h"
 #include "bass_fx.h"
 #include "bassflac.h"
+#include "basswebm.h"
+#include "bass_spx.h"
+#include "bass_tta.h"
 
 // Custom header files
 #include "song.h"
@@ -77,6 +82,7 @@
 #include "visualizationwindow.h"
 #include "infowidget.h"
 #include "customslider.h"
+#include "startwidget.h"
 
 #include "fifo_map.hpp"
 
@@ -188,6 +194,49 @@ private slots:
 private:
     HSTREAM channel;
 
+    void createStream(HSTREAM & chan, QString file, DWORD flags) {
+        chan = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
+        if (BASS_ErrorGetCode())
+            chan = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
+        if (BASS_ErrorGetCode())
+            chan = BASS_OPUS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
+        if (BASS_ErrorGetCode())
+            chan = BASS_WEBM_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags, 0);
+
+        if (BASS_ErrorGetCode()) {
+            chan = BASS_APE_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
+            if (BASS_ErrorGetCode()) {
+                if (!QDir("C:/amptemp").exists())
+                    QDir().mkdir("C:/amptemp");
+
+                QFile::copy(file, "C:/amptemp/tmp.ape");
+                chan = BASS_SPX_StreamCreateFile(false, "C:/amptemp/tmp.ape", 0, 0, flags);
+            }
+        }
+        if (BASS_ErrorGetCode()) {
+            remove("C:/amptemp/tmp.ape");
+            chan = BASS_SPX_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
+            if (BASS_ErrorGetCode()) {
+                if (!QDir("C:/amptemp").exists())
+                    QDir().mkdir("C:/amptemp");
+
+                QFile::copy(file, "C:/amptemp/tmp.spx");
+                chan = BASS_SPX_StreamCreateFile(false, "C:/amptemp/tmp.spx", 0, 0, flags);
+            }
+        }
+        if (BASS_ErrorGetCode()) {
+            remove("C:/amptemp/tmp.spx");
+            chan = BASS_TTA_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
+            if (BASS_ErrorGetCode()) {
+                if (!QDir("C:/amptemp").exists())
+                    QDir().mkdir("C:/amptemp");
+
+                QFile::copy(file, "C:/amptemp/tmp.tta");
+                chan = BASS_TTA_StreamCreateFile(false, "C:/amptemp/tmp.tta", 0, 0, flags);
+            }
+        }
+    }
+
     bool looped = false;
     bool paused = true;
     bool repeat = false;
@@ -201,6 +250,7 @@ private:
     bool remoteScrolling = false;
     bool volumeSliderToggled = false;
     bool muted = false;
+    bool configLoaded = false;
     bool visualWindowOpened = false;
     bool equoEnabled = false;
 
@@ -224,6 +274,7 @@ private:
     fifo_map <QString, vector <Song>> playlists;
 
     QFile logfile;
+    QFile configFile;
 
     QString currentPlaylistName = "";
     QString playingSongPlaylist = "";
@@ -276,6 +327,7 @@ private:
     settingsWindow * settingsWin = nullptr;
     equalizerWindow * equalizerWin = nullptr;
     VisualizationWindow * visualWin = nullptr;
+    StartWidget * startWidget = nullptr;
 
     QWidget * marksWin = nullptr;
     QListWidget * marksList;
@@ -352,6 +404,19 @@ private:
 
     QString seconds2qstring (float seconds);
     double qstring2seconds (QString time);
+
+    void setPosition (float pos) {
+
+        if (!looped)
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, pos), BASS_POS_BYTE);
+        else
+        {
+            if (pos < loopStart || pos > loopEnd)
+                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, loopStart), BASS_POS_BYTE);
+            else
+                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, pos), BASS_POS_BYTE);
+        }
+    }
 
     float getDuration () {
         QWORD len = BASS_ChannelGetLength(channel, BASS_POS_BYTE); // the length in bytes
@@ -439,5 +504,7 @@ private:
         }
         return i;
     }
+
+    void removeDir(QString dir);
 };
 #endif // MAINWINDOW_H

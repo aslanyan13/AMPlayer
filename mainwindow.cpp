@@ -32,6 +32,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 {
     QApplication::setActiveWindow(this);
 
+    startWidget = new StartWidget();
+    startWidget->popup();
+
     if (QtWin::isCompositionEnabled())
         QtWin::extendFrameIntoClientArea(this, 0, 0, 0, 0);
     else
@@ -75,6 +78,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
     }
 
+    configFile.setFileName(QDir::currentPath() + "/config.cfg");
+    if (!configFile.open(QIODevice::ReadWrite | QIODevice::Text))
+        qDebug() << "Error open config file!";
+    else {
+        configLoaded = true;
+        qDebug() << "Config file opened!";
+    }
     // Reading playlists from XML file
     XMLreader = new PlaylistReader(QDir::currentPath() + "/XML/playlists.xml");
     XMLreader->readPlaylists(playlists);
@@ -204,7 +214,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QString timecode = itemText.mid(start + 1, end);
         qDebug() << timecode << " - " << qstring2seconds(timecode);
 
-        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, qstring2seconds(timecode)), BASS_POS_BYTE);
+        setPosition(qstring2seconds(timecode));
     });
 
     infoWidget = new InfoWidget();
@@ -376,7 +386,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     timecode->setAlignment(Qt::AlignCenter);
     timecode->setMouseTracking(true);
     timecode->installEventFilter(this);
-    timecode->setStyleSheet("font-size: 11px; border: 1px solid silver; background-color: #101010; color: silver;");
+    timecode->setStyleSheet("padding: 3px 5px; font-size: 11px; border: 1px solid silver; background-color: #101010; color: silver;");
 
     playlistsBar = new QTabBar(this);
     playlistsBar->setFont(fontAwesome);
@@ -501,18 +511,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         BASS_StreamFree(channel);
 
         if (equoEnabled) {
-            channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
-            if (BASS_ErrorGetCode())
-                channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+            createStream(channel, temp.path, BASS_STREAM_DECODE);
 
             channel = BASS_FX_TempoCreate(channel, NULL);
             equalizerWin->channel = &channel;
             equalizerWin->init();
             equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
         } else {
-            channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, 0);
-            if (BASS_ErrorGetCode())
-                channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, 0);
+            createStream(channel, temp.path, 0);
 
             equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
         }
@@ -520,7 +526,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         if (muted) BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, 0);
         else BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 
-        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, pos), BASS_POS_BYTE);
+        setPosition(pos);
     });
 
     // If visualizations window closed
@@ -647,6 +653,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QShortcut * removeFileShortcut = new QShortcut(QKeySequence("Delete"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * removePlaylistShortcut = new QShortcut(QKeySequence("Ctrl+Delete"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * playFileShortcut = new QShortcut(QKeySequence("Enter"), playlistWidget, nullptr, nullptr, Qt::WidgetShortcut);
+    QShortcut * marksShortcut = new QShortcut(QKeySequence("Ctrl+M"), this, nullptr, nullptr, Qt::ApplicationShortcut);
 
     connect (fileOpenShortcut, &QShortcut::activated, [=]() {
         openFile();
@@ -682,12 +689,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (forward3secShortcut, &QShortcut::activated, [=]() {
         double new_time = getPosition() + 3;
         BASS_ChannelPause(channel);
-        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+        setPosition(new_time);
     });
     connect (backward3secShortcut, &QShortcut::activated, [=]() {
         double new_time = getPosition() - 3;
         BASS_ChannelPause(channel);
-        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+        setPosition(new_time);
     });
     connect (removeFileShortcut, &QShortcut::activated, [=]() {
         removeFile();
@@ -700,11 +707,55 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         if (playlistWidget->currentRow() != -1)
             setActive(playlistWidget->currentRow());
     });
+    connect (marksShortcut, &QShortcut::activated, [=]() {
+        marksWin->raise();
+        marksWin->show();
+        marksWin->move (this->pos().x() + (this->size().width() - marksWin->size().width()) / 2, this->pos().y() + (this->size().height() - marksWin->size().height()) / 2);
+        marksWin->setFocus();
+    });
+
+    QTimer::singleShot(3000, [=]() {
+        // startWidget->close();
+
+        this->show();
+        this->raise();
+        this->setFocus();
+
+        if (configLoaded) {
+            QTextStream in(&configFile);
+
+            int index = in.readLine().toInt();
+            QString path = in.readLine();
+            QString playlist = in.readLine();
+
+            double position = in.readLine().toDouble();
+
+            qDebug() << index << playlist << position << path;
+
+            if (playlist == "") return;
+            if (index > playlists[playlist].size()) return;
+            if (playlists[playlist][index].path != path) return;
+
+            lastPlaylistName = playingSongPlaylist;
+            playingSongPlaylist = playlist;
+            lastTrackID = currentID;
+
+            muted = true;
+            setActive(index);
+            pause();
+            muted = false;
+            BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
+            playlistsBar->setCurrentIndex(getPlaylistIndexByName(playlist));
+            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, position), BASS_POS_BYTE);
+        }
+    });
+    QTimer::singleShot(5000, startWidget, &StartWidget::close);
 }
 
 MainWindow::~MainWindow()
 {
     remove("cover.png"); // Remove Cover file
+    removeDir("C:/amptemp");
 
     QString uptime = seconds2qstring((clock() - starttime) / 1000);
     writeLog("Exiting...");
@@ -716,6 +767,16 @@ MainWindow::~MainWindow()
         playlists[currentPlaylistName] = playlist;
 
     XMLreader->writePlaylists(playlists);
+
+    configFile.resize(0);
+    QTextStream out(&configFile);
+    out << currentID << "\n";
+    if (currentID != -1)
+        out << playlists[playingSongPlaylist][currentID].path;
+    out <<  "\n";
+    out << playingSongPlaylist << "\n";
+    out << getPosition();
+
     delete ui;
 }
 // Program menu
@@ -768,7 +829,7 @@ void MainWindow::trayContext () {
     myMenu.setStyleSheet("padding-left: 10px; padding-top: 3px; icon-size: 12px; background-color: #121212; color: silver");
 
     QAction windowAction;
-    windowAction.setIcon(QIcon(":/Images/window-maximize-regular.png"));
+    windowAction.setIcon(QIcon(QPixmap(":/Images/window-maximize-regular.png")));
     windowAction.setText("Show window");
     windowAction.setObjectName("show-window");
     windowAction.setIconVisibleInMenu(true);
@@ -777,21 +838,21 @@ void MainWindow::trayContext () {
     myMenu.addSeparator();
 
     QAction playAction;
-    playAction.setIcon(paused ? QIcon(":/Images/pause-solid.png") : QIcon(":/Images/play-solid.png"));
+    playAction.setIcon(paused ? QIcon(QPixmap(":/Images/pause-solid.png")) : QIcon(QPixmap(":/Images/play-solid.png")));
     playAction.setText(paused ? "Pause" : "Play");
     playAction.setObjectName("play");
     playAction.setIconVisibleInMenu(true);
     myMenu.addAction(&playAction);
 
     QAction backwardAction;
-    backwardAction.setIcon(QIcon(":/Images/backward-solid.png"));
+    backwardAction.setIcon(QIcon(QPixmap(":/Images/backward-solid.png")));
     backwardAction.setText("Backward");
     backwardAction.setObjectName("backward");
     backwardAction.setIconVisibleInMenu(true);
     myMenu.addAction(&backwardAction);
 
     QAction forwardAction;
-    forwardAction.setIcon(QIcon(":/Images/forward-solid.png"));
+    forwardAction.setIcon(QIcon(QPixmap(":/Images/forward-solid.png")));
     forwardAction.setText("Forward");
     forwardAction.setObjectName("forward");
     forwardAction.setIconVisibleInMenu(true);
@@ -801,13 +862,13 @@ void MainWindow::trayContext () {
 
     QAction marksAction;
     marksAction.setText("Marks");
-    marksAction.setIcon(QIcon(":/Images/bookmark-regular.png"));
+    marksAction.setIcon(QIcon(QPixmap(":/Images/bookmark-regular.png")));
     marksAction.setIconVisibleInMenu(true);
     myMenu.addAction(&marksAction);
 
     QAction repeatAction;
     repeatAction.setText("Repeat");
-    repeatAction.setIcon(QIcon(":/Images/repeat.png"));
+    repeatAction.setIcon(QIcon(QPixmap(":/Images/repeat.png")));
     repeatAction.setCheckable(true);
     repeatAction.setChecked(repeat);
     repeatAction.setIconVisibleInMenu(true);
@@ -815,7 +876,7 @@ void MainWindow::trayContext () {
 
     QAction shuffleAction;
     shuffleAction.setText("Shuffle");
-    shuffleAction.setIcon(QIcon(":/Images/random-solid.png"));
+    shuffleAction.setIcon(QIcon(QPixmap(":/Images/random-solid.png")));
     shuffleAction.setCheckable(true);
     shuffleAction.setChecked(shuffle);
     shuffleAction.setIconVisibleInMenu(true);
@@ -825,21 +886,21 @@ void MainWindow::trayContext () {
 
     QAction equoAction;
     equoAction.setText("Equalizer");
-    equoAction.setIcon(QIcon(":/Images/sliders-h-solid.png"));
+    equoAction.setIcon(QIcon(QPixmap(":/Images/sliders-h-solid.png")));
     equoAction.setCheckable(true);
     equoAction.setIconVisibleInMenu(true);
     myMenu.addAction(&equoAction);
 
     QAction visualAction;
     visualAction.setText("Visualization");
-    visualAction.setIcon(QIcon(":/Images/tv-solid.png"));
+    visualAction.setIcon(QIcon(QPixmap(":/Images/tv-solid.png")));
     visualAction.setCheckable(true);
     visualAction.setIconVisibleInMenu(true);
     myMenu.addAction(&visualAction);
 
     QAction remoteAction;
     remoteAction.setText("Remote control");
-    remoteAction.setIcon(QIcon(":/Images/mobile-solid.png"));
+    remoteAction.setIcon(QIcon(QPixmap(":/Images/mobile-solid.png")));
     remoteAction.setCheckable(true);
     remoteAction.setIconVisibleInMenu(true);
     myMenu.addAction(&remoteAction);
@@ -896,7 +957,13 @@ bool MainWindow::openFile ()
     QFileDialog dialog(this);
     dialog.setDirectory(QDir::homePath());
     dialog.setFileMode(QFileDialog::ExistingFiles);
-    dialog.setNameFilter(trUtf8("Audio files (*.flac *.aac *.m4a *.mp4 *.mp3 *.mp2 *.mp1 *.ogg *.aif *.aiff *.wav)"));
+
+    QString formats = "*.tta *.spx *.ape *.mov *.ac3 *.asf *.webm *.wma *.adt *.adts *.wm *.wmv *.3g2 *.3gp *.flac *.aac *.mkv *.mka *.m4a *.m4b *.m4r *.mpa *.mpc *.mpeg *.m4p *.mp4 *.mp3 *.mp2 *.mp1 *.opus *.oga *.ogg *.aif *.aiff *.aifc *.wav *.avi";
+    QStringList formatsList = formats.split(" ");
+    formatsList.sort();
+    QString sortedFormats = formatsList.join(" ");
+
+    dialog.setNameFilter("Audio files (" + sortedFormats + ")");
 
     QStringList fileNames;
 
@@ -1028,7 +1095,10 @@ bool MainWindow::openFolder () {
         return false;
 
     QDir directory(folder);
-    QStringList musicFiles = directory.entryList(QStringList() << "*.flac" << "*.ogg" << "*.aif" << "*.aiff" << "*.aac" << "*.m4a" << "*.mp4" << "*.mp3" << "*.mo3" << "*.wav" << "*.mp2" << "*.mp1", QDir::Files | QDir::Readable);
+    QString formats = "*.tta *.spx *.ape *.mov *.ac3 *.asf *.webm *.wma *.adt *.adts *.wm *.wmv *.3g2 *.3gp *.flac *.aac *.mkv *.mka *.m4a *.m4b *.m4r *.mpa *.mpc *.mpeg *.m4p *.mp4 *.mp3 *.mp2 *.mp1 *.opus *.oga *.ogg *.aif *.aiff *.aifc *.wav *.avi";
+    auto formatsList = formats.split(" ");
+    formatsList.sort();
+    QStringList musicFiles = directory.entryList(formatsList, QDir::Files | QDir::Readable);
 
     writeLog("Folder opened: " + folder);
     writeLog("Folder contains: " + QString::number (musicFiles.length()) + " files");
@@ -1104,6 +1174,7 @@ void MainWindow::createPlaylist ()
     do {
         bool ok;
         name = QInputDialog::getText(this, tr("Playlist Name"),  tr("Playlist name:"), QLineEdit::Normal, NULL, &ok);
+        name = name.simplified();
 
         if (ok && !name.isEmpty())
         {
@@ -1253,6 +1324,8 @@ void MainWindow::drawPlaylist() {
                              "\nFormat: " + playlist[i].getFormat() +
                              "\nSize: " + playlist[i].getFileSizeMB());
 
+        removeDir("C:/amptemp2");
+
         playlistWidget->addItem(songItem);
 
         if (currentID != -1 && playlists[playingSongPlaylist][currentID] == playlist[i] && currentPlaylistName == playingSongPlaylist)
@@ -1326,6 +1399,27 @@ void MainWindow::playlistsBarContextMenu (const QPoint& point) {
         }
     }
 }
+void MainWindow::removeDir(QString dir)
+{
+    QDir tempdir(dir);
+
+    //First delete any files in the current directory
+    QFileInfoList files = tempdir.entryInfoList(QDir::NoDotAndDotDot | QDir::Files);
+    for(int file = 0; file < files.count(); file++)
+    {
+        tempdir.remove(files.at(file).fileName());
+    }
+
+    //Now recursively delete any child directories
+    QFileInfoList dirs = tempdir.entryInfoList(QDir::NoDotAndDotDot | QDir::Dirs);
+    for(int dir = 0; dir < dirs.count(); dir++)
+    {
+        this->removeDir(dirs.at(dir).absoluteFilePath());
+    }
+
+    //Finally, remove empty parent directory
+    tempdir.rmdir(tempdir.path());
+}
 
 void MainWindow::setActive(QListWidgetItem * item) {
     lastTrackID = currentID;
@@ -1334,6 +1428,8 @@ void MainWindow::setActive(QListWidgetItem * item) {
     setActive (playlistWidget->currentRow());
 }
 void MainWindow::setActive(int index) {
+    removeDir("C:/amptemp");
+
     removeLoop();
 
     bool isSameTrack = false;
@@ -1404,21 +1500,19 @@ void MainWindow::setActive(int index) {
 
     BASS_StreamFree(channel);
 
+    qDebug() << temp.path;
+
     if (equoEnabled) {
-        channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
-        qDebug() << BASS_ErrorGetCode();
-        if (BASS_ErrorGetCode())
-            channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, BASS_STREAM_DECODE);
+        createStream(channel, temp.path, BASS_STREAM_DECODE);
+
         qDebug() << BASS_ErrorGetCode();
         channel = BASS_FX_TempoCreate(channel, NULL);
         equalizerWin->channel = &channel;
         equalizerWin->init();
 
     } else {
-        channel = BASS_StreamCreateFile(FALSE, temp.path.toStdWString().c_str(), 0, 0, 0);
-        qDebug() << BASS_ErrorGetCode();
-        if (BASS_ErrorGetCode())
-            channel = BASS_FLAC_StreamCreateFile(false, temp.path.toStdWString().c_str(), 0, 0, 0);
+        createStream(channel, temp.path, 0);
+
         qDebug() << BASS_ErrorGetCode();
     }
 
@@ -1438,6 +1532,7 @@ void MainWindow::setActive(int index) {
     }
 
     BASS_ChannelPlay(channel, false);
+    qDebug() << BASS_ErrorGetCode();
     if (muted) BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, 0);
     else BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 
@@ -1627,14 +1722,31 @@ QString MainWindow::seconds2qstring (float seconds) {
     return result;
 }
 double MainWindow::qstring2seconds (QString time) {
-    if (time.count(':') == 1) {
+    time = time.simplified();
+
+    if (time.count(':') == 1 && time[0] != '-') {
         int minutes = time.mid(0, time.indexOf(':')).toInt();
         int seconds = time.mid(time.indexOf(':') + 1).toInt();
 
         return minutes * 60.0 + seconds;
     }
+    else if (time[0] == '-') {
+        return getDuration() - qstring2seconds(time.mid(1));
+    }
+    else if (time[time.length() - 2] == "m" && time[time.length() - 1] == "s") {
+        return time.mid(0, time.length() - 2).toDouble() / 1000;
+    }
+    else if (time[time.length() - 1] == "s") {
+        return time.mid(0, time.length() - 1).toDouble();
+    }
+    else if (time[time.length() - 1] == "m") {
+        return time.mid(0, time.length() - 1).toDouble() * 60;
+    }
+    else if (time[time.length() - 1] == "h") {
+        return time.mid(0, time.length() - 1).toDouble() * 3600;
+    }
     // Check if mark name used
-    if (time[0] == ':' && time[time.length() - 1] == ':') {
+    else if (time[0] == '"' && time[time.length() - 1] == '"') {
         QString markTag = time.mid(1, time.length() - 2);
 
         qDebug() << markTag;
@@ -1683,7 +1795,7 @@ void MainWindow::makeLoop() {
             loopStart = start;
             loopEnd = end;
             if (getPosition() < start || getPosition() > end)
-                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, start), BASS_POS_BYTE);
+                setPosition(start);
         }
     } else {
         removeLoop();
@@ -1699,8 +1811,10 @@ void MainWindow::updateTime() {
         taskbarProgress->resume();
         taskbarProgress->setValue(songPos);
     }
-    else
+    else {
+        taskbarProgress->setValue(songPos);
         taskbarProgress->stop();
+    }
     if (isOrderChanged)
     {
         reorderPlaylist();
@@ -1725,7 +1839,7 @@ void MainWindow::updateTime() {
         songPosition->setText(pos);
 
         if (looped && getPosition() > loopEnd) {
-            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, loopStart), BASS_POS_BYTE);
+            setPosition(loopStart);
         }
 
         if (!looped && getPosition() >= getDuration())
@@ -1876,13 +1990,10 @@ void MainWindow::paintEvent(QPaintEvent * event) {
 void MainWindow::prerenderFft(QString file)
 {   
     HSTREAM tempStream;
-    tempStream = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
-    if (BASS_ErrorGetCode())
-        tempStream = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
+    createStream(tempStream, file, BASS_STREAM_PRESCAN | BASS_ASYNCFILE);
 
     writeLog("Prerendering fft...");
 
-    int k = 0;
     QWORD len = BASS_ChannelGetLength(tempStream, BASS_POS_BYTE); // the length in bytes
     float time = BASS_ChannelBytes2Seconds(tempStream, len);      // the length in seconds
 
@@ -1896,45 +2007,48 @@ void MainWindow::prerenderFft(QString file)
 
     qDebug() << playingSongPlaylist << currentID;
 
+    int k = 0;
     for (float i = 0; i < time; i += time / 140, k++)
     {
         BASS_ChannelGetData(tempStream, fft, BASS_DATA_FFT2048);
 
         vector <float> peaks;
 
-        for (int j = 0; j < 50; j++)
+        for (int j = 0; j < 30; j++)
         {
             float max = sqrt(fft[1]) * 3 * 40 - 4;
             if (max < 0) max = 0;
             if (max > 40) max = 40;
 
-            for (int k = 2; k <= avgLen; k++)
+            for (int l = 2; l <= avgLen; l++)
             {
-                float value = sqrt(fft[k]) * 3 * 40 - 4;
+                float value = sqrt(fft[l]) * 3 * 40 - 4;
 
                 if (value < 0) value = 0;
                 if (value > 40) value = 40;
 
-                if (value > max && count(peaks.begin(), peaks.end(), value) == 0)
+                if (value > max && std::find(peaks.begin(), peaks.end(), value) == peaks.end())
                     max = value;
             }
 
-            if (count(peaks.begin(), peaks.end(), max) == 0)
+            if (std::find(peaks.begin(), peaks.end(), max) == peaks.end())
                 peaks.push_back(max);
         }
 
-        float avgMax = accumulate(peaks.begin(), peaks.end(), 0.0) / peaks.size();
+        float avgMax = 0;
+        if (peaks.size() != 0)
+            avgMax = accumulate(peaks.begin(), peaks.end(), 0.0) / peaks.size();
 
         if (avgMax <= 3) avgMax = 3;
         else if (avgMax > 40) avgMax = 40;
 
-        tempfft[(int)k] = avgMax;
+        tempfft[k] = avgMax;
 
         do {
-            int value = tempfft[(int)k] / 10;
+            int value = tempfft[k] / 10;
             if (value < 1) value = 1;
 
-            prerenderedFft[(int)k] += value;
+            prerenderedFft[k] += value;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (currentID >= this->playlists[playingSongPlaylist].size())
@@ -1944,10 +2058,11 @@ void MainWindow::prerenderFft(QString file)
                 BASS_StreamFree(tempStream);
                 return;
             }
-        } while (prerenderedFft[(int)k] < tempfft[(int)k]);
+        } while (prerenderedFft[k] < tempfft[k]);
 
         if (currentID >= this->playlists[playingSongPlaylist].size())
             return;
+
         if (currentID == -1 || this->playlists[playingSongPlaylist][currentID].path != file) {
             clearPrerenderedFft();
             BASS_StreamFree(tempStream);
@@ -1970,8 +2085,15 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
 
         timecode->repaint();
         timecode->clear();
-        timecode->setGeometry (mouseX + 10, mouseY + 10, 50, 20);
-        timecode->setText(seconds2qstring(((mouseX - 50) / (700.0f)) * getDuration()));
+        timecode->move(mouseX + 10, mouseY + 10);
+
+        double pos = ((mouseX - 50) / (700.0f)) * getDuration();
+
+        if (currentID != -1 && playlists[playingSongPlaylist][currentID].marks.find(pos) != playlists[playingSongPlaylist][currentID].marks.end())
+            timecode->setText(seconds2qstring(pos) + " (" + playlists[playingSongPlaylist][currentID].marks.find(pos)->second + ")");
+        else
+            timecode->setText(seconds2qstring(pos));
+        timecode->adjustSize();
         timecode->show();
     }
     else {
@@ -2032,7 +2154,7 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
 
             double newtime = ((mouseX - 50) / (700.0f)) * getDuration();
 
-            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, newtime), BASS_POS_BYTE);
+            setPosition(newtime);
             taskbarProgress->setValue(newtime);
             writeLog("Song position changed to: " + seconds2qstring(newtime) + " (" + QString::number(newtime) + "s)");
         }
@@ -2088,10 +2210,6 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
                     writeLog((liveSpec) ? "Live spectrum enabled" : "Live spectrum disabled");
                 }
             }
-            else
-            {
-                // nothing was chosen
-            }
         }
     }
 
@@ -2102,6 +2220,8 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
         moving = true;
         lastMousePosition = event->pos();
     }
+
+
 }
 void MainWindow::wheelEvent(QWheelEvent * event) {
     float mouseX = event->position().x();
@@ -2122,7 +2242,7 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
         }
 
 
-        BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+        setPosition(new_time);
         taskbarProgress->setValue(new_time);
     }  
 }
@@ -2217,6 +2337,10 @@ void MainWindow::reloadStyles () {
         visualBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     if (equoEnabled)
         equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
+
+    marksList->setStyleSheet("QListWidget { font-size: 13px; border: 1px solid transparent; outline: none; background-color: #141414; color: silver; padding: 5px; }"
+                             "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }"
+                             "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
 }
 
 void MainWindow::colorChange()
@@ -2306,7 +2430,7 @@ void MainWindow::getRemoteCommands (const QString & command) {
             double new_time = getDuration() * (pos.toDouble() / 1000.0f);
 
             qDebug() << "Pos: " << new_time;
-            BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, new_time), BASS_POS_BYTE);
+            setPosition(new_time);
             taskbarProgress->setValue(new_time);
         }
         if (command.mid(0, command.indexOf('|')) == "vol") {

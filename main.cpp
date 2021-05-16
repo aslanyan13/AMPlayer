@@ -4,10 +4,15 @@
 #include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QDebug>
+
 #include <iostream>
+
+#include "startwidget.h"
 
 int main(int argc, char *argv[])
 {
+
     srand(time(NULL));
 
     QApplication a(argc, argv);
@@ -19,10 +24,15 @@ int main(int argc, char *argv[])
     a.setStartDragTime(1000);
     a.setQuitOnLastWindowClosed(false);
 
+    /*StartWidget * widget = new StartWidget();
+    widget->raise();
+    widget->show();
+    */
+
     for (int i = 1; i <= 5; i++)
         a.setEffectEnabled((Qt::UIEffect)i, true);
 
-    if (!BASS_Init(-1, 44100, BASS_DEVICE_16BITS | BASS_DEVICE_STEREO, 0, NULL)) {
+    if (!BASS_Init(-1, 96000, BASS_DEVICE_16BITS | BASS_DEVICE_STEREO, 0, NULL)) {
         QMessageBox msgBox;
         msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
         msgBox.setText("No audio devices found!");
@@ -41,8 +51,9 @@ int main(int argc, char *argv[])
 
     BASS_SetConfig(BASS_CONFIG_SRC, 16);
 
+    auto start = clock();
     MainWindow w;
-    w.show();
+    qDebug() << "Start - " << clock() - start << "ms";
 
     return a.exec();
 }
