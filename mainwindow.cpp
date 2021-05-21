@@ -60,7 +60,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     removeControlServer = new QWebSocketServer("Remote Control Server", QWebSocketServer::NonSecureMode, this);
 
     httpServer = new QTcpServer(this);
-    httpServerPort = rand() % 9999;
+    httpServerPort = rand() % 10000 + 10000;
 
     starttime = clock();
 
@@ -79,12 +79,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     }
 
     configFile.setFileName(QDir::currentPath() + "/config.cfg");
+
     if (!configFile.open(QIODevice::ReadWrite | QIODevice::Text))
         qDebug() << "Error open config file!";
     else {
         configLoaded = true;
         qDebug() << "Config file opened!";
     }
+
     // Reading playlists from XML file
     XMLreader = new PlaylistReader(QDir::currentPath() + "/XML/playlists.xml");
     XMLreader->readPlaylists(playlists);
@@ -167,8 +169,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                              "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
     marksList->show();
 
+
     QPushButton * addMarkBtn = new QPushButton(marksWin);
     addMarkBtn->setFont(fontAwesome);
+    addMarkBtn->setDisabled(false);
     addMarkBtn->setGeometry(10, 290, 280, 30);
     addMarkBtn->setCursor(Qt::PointingHandCursor);
     addMarkBtn->setStyleSheet("QPushButton { font-size: 14px; background: #181818; color: silver; border: 0px solid black; }");
@@ -179,6 +183,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     hint->setStyleSheet("font-size: 10px; color: gray;");
     hint->setAlignment(Qt::AlignVCenter);
     hint->setText("*Hint: Double-click to jump to mark, right click to edit");
+
+    initTimerWindow();
 
     connect (addMarkBtn, SIGNAL(clicked()), this, SLOT(addMark()));
     connect (marksList, &QListWidget::customContextMenuRequested, [=](const QPoint& point) {
@@ -212,13 +218,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         int end = itemText.mid(start + 1).indexOf(']');
 
         QString timecode = itemText.mid(start + 1, end);
-        qDebug() << timecode << " - " << qstring2seconds(timecode);
 
         setPosition(qstring2seconds(timecode));
     });
 
     infoWidget = new InfoWidget();
     infoWidget->show();
+
+    lyricsWin = new LyricsWindow();
+    lyricsWin->channel = &channel;
 
     QHBoxLayout * horizontalLayout = new QHBoxLayout();
     horizontalLayout->setSpacing(0);
@@ -250,7 +258,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     closeBtn = new QPushButton(this);
     closeBtn->setFont(fontAwesome);
-    closeBtn->setToolTip("Close");
+    closeBtn->setToolTip("Close (Ctrl+Q)");
     closeBtn->setGeometry(775, 11, 15, 15);
     closeBtn->setStyleSheet("QPushButton { font-size: 18px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     closeBtn->setCursor(Qt::PointingHandCursor);
@@ -322,13 +330,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     remoteBtn = new QPushButton(this);
     remoteBtn->setFont(fontAwesome);
-    remoteBtn->setGeometry(145, 291, 30, 30);
+    remoteBtn->setGeometry(105, 291, 30, 30);
     remoteBtn->setToolTip("Remote Control");
     remoteBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
     remoteBtn->setText("\uf3cd");
     remoteBtn->setCursor(Qt::PointingHandCursor);
     remoteBtn->setMouseTracking(true);
     remoteBtn->show();
+
+    lyricsBtn = new QPushButton(this);
+    lyricsBtn->setFont(fontAwesome);
+    lyricsBtn->setGeometry(145, 291, 30, 30);
+    lyricsBtn->setToolTip("Lyrics");
+    lyricsBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
+    lyricsBtn->setText("\uf20a");
+    lyricsBtn->setCursor(Qt::PointingHandCursor);
+    lyricsBtn->setMouseTracking(true);
+    lyricsBtn->show();
 
     timerBtn = new QPushButton (this);
     timerBtn->setFont(fontAwesome);
@@ -337,16 +355,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     timerBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
     timerBtn->setText("\uf017");
     timerBtn->setCursor(Qt::PointingHandCursor);
+    timerBtn->setMouseTracking(true);
     timerBtn->show();
 
-    audio3dBtn = new QPushButton(this);
-    audio3dBtn->setFont(fontAwesome);
-    audio3dBtn->setGeometry(550, 291, 30, 30);
-    audio3dBtn->setToolTip("3D Audio");
-    audio3dBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
-    audio3dBtn->setText("\uf1b2");
-    audio3dBtn->setCursor(Qt::PointingHandCursor);
-    audio3dBtn->show();
+    marksBtn = new QPushButton(this);
+    marksBtn->setFont(fontAwesome);
+    marksBtn->setDisabled(true);
+    marksBtn->setGeometry(550, 291, 30, 30);
+    marksBtn->setToolTip("Marks (Ctrl + M)");
+    marksBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }"
+                            "QPushButton:disabled { color: gray; }");
+    marksBtn->setText("\uf02e");
+    marksBtn->setCursor(Qt::PointingHandCursor);
+    marksBtn->show();
 
     visualBtn = new QPushButton(this);
     visualBtn->setFont(fontAwesome);
@@ -446,8 +467,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     searchSong->setMouseTracking(true);
     searchSong->setFont(fontAwesome);
     searchSong->setStyleSheet("QMenu { background-color: #101010; color: silver; }"
-                              "QLineEdit { padding: 0px 20px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid #101010; background-color: #141414; color: silver; }" \
-                              "QLineEdit:focus { /* border-bottom: 1px solid " + QString::fromStdString(mainColorStr) + "; */ }");
+                              "QLineEdit { padding: 0px 20px; font-size: 12px; border: 0px solid silver; border-bottom: 1px solid #101010; background-color: #141414; color: silver; }");
     searchSong->setGeometry(15, 430, 775, 30);
     searchSong->setPlaceholderText("\uf002 Search song");
     searchSong->show();
@@ -500,6 +520,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     volumeSlider->hide();
 
+    connect (lyricsWin->addLyricsBtn, &QPushButton::clicked, [=]() {
+        loadLyrics(&playlists[playingSongPlaylist][currentID]);
+        if (currentPlaylistName == playingSongPlaylist && searchSong->text() == "")
+            playlist[currentID] = playlists[playingSongPlaylist][currentID];
+    });
+    connect (lyricsWin, &LyricsWindow::closed, [=]() {
+        lyricsEnabled = false;
+        lyricsBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
+    });
+
     connect (equalizerWin->enabledCheckBox, &QCheckBox::stateChanged, [=](int state) {
         equoEnabled = (state == Qt::Checked);
 
@@ -548,6 +578,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (playlistsBar, &QTabBar::tabBarClicked, [=](int index) {
         if (playlistsBar->tabText(index) == "\uf067")
         {
+            playlistCreating = true;
             createPlaylist();
         }
     });
@@ -604,7 +635,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (playlistWidget->model(), SIGNAL(rowsMoved(QModelIndex, int, int, QModelIndex, int)), this, SLOT(rowsMoved(QModelIndex, int, int, QModelIndex, int)));
 
     connect (menuBtn, SIGNAL(clicked()), this, SLOT(menuContext()));
+    connect (lyricsBtn, &QPushButton::pressed, [=]() {
+        lyricsWin->show();
+        lyricsWin->raise();
+        lyricsWin->setFocus();
 
+        lyricsEnabled = true;
+        reloadStyles();
+    });
     connect (minimizeBtn, SIGNAL(clicked()), this, SLOT(slot_minimize()));
     connect (closeBtn, SIGNAL(clicked()), this, SLOT(slot_close()));
     connect (forwardBtn, SIGNAL(clicked()), this, SLOT(forward()));
@@ -623,11 +661,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
     connect (repeatBtn, SIGNAL(clicked()), this, SLOT(changeRepeat()));
     connect (shuffleBtn, SIGNAL(clicked()), this, SLOT(changeShuffle()));
-    connect (audio3dBtn, SIGNAL(clicked()), this, SLOT(audio3D()));
+    connect (marksBtn, SIGNAL(clicked()), this, SLOT(marksShow()));
     connect (equoBtn, SIGNAL(clicked()), this, SLOT(equalizer()));
-    connect (timerBtn, SIGNAL(clicked()), this, SLOT(trackTimer()));
+    connect (timerBtn, SIGNAL(clicked()), this, SLOT(showSongTimer()));
 
-    connect (remoteBtn, &QPushButton::clicked, this, &MainWindow::remoteControl);
+    connect (remoteBtn, SIGNAL(clicked()), this, SLOT(remoteControl()));
 
     connect (visualBtn, SIGNAL(clicked()), this, SLOT(visualizations()));
     connect (volumeSlider, SIGNAL(valueChanged(int)), this, SLOT(changeVolume(int)));
@@ -650,9 +688,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QShortcut * loopShortcut = new QShortcut(QKeySequence("Ctrl+L"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * forward3secShortcut = new QShortcut(QKeySequence("Right"), this, nullptr, nullptr, Qt::ApplicationShortcut);
     QShortcut * backward3secShortcut = new QShortcut(QKeySequence("Left"), this, nullptr, nullptr, Qt::ApplicationShortcut);
-    QShortcut * removeFileShortcut = new QShortcut(QKeySequence("Delete"), this, nullptr, nullptr, Qt::ApplicationShortcut);
+    QShortcut * removeFileShortcut = new QShortcut(QKeySequence("Delete"), playlistWidget, nullptr, nullptr, Qt::WidgetShortcut);
+    QShortcut * removeMarkShortcut = new QShortcut(QKeySequence("Delete"), marksWin);
     QShortcut * removePlaylistShortcut = new QShortcut(QKeySequence("Ctrl+Delete"), this, nullptr, nullptr, Qt::ApplicationShortcut);
-    QShortcut * playFileShortcut = new QShortcut(QKeySequence("Enter"), playlistWidget, nullptr, nullptr, Qt::WidgetShortcut);
+    QShortcut * playFileShortcut = new QShortcut(QKeySequence(Qt::Key_Return), playlistWidget, nullptr, nullptr, Qt::WidgetShortcut);
     QShortcut * marksShortcut = new QShortcut(QKeySequence("Ctrl+M"), this, nullptr, nullptr, Qt::ApplicationShortcut);
 
     connect (fileOpenShortcut, &QShortcut::activated, [=]() {
@@ -702,21 +741,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect (removePlaylistShortcut, &QShortcut::activated, [=]() {
         removePlaylist(getPlaylistIndexByName(currentPlaylistName));
     });
-    // Doesn't work :c
+    connect (removeMarkShortcut, &QShortcut::activated, [=]() {
+        removeMark();
+    });
     connect (playFileShortcut, &QShortcut::activated, [=]() {
-        if (playlistWidget->currentRow() != -1)
+        if (playlistWidget->currentRow() != -1) {
+            lastTrackID = currentID;
+            lastPlaylistName = playingSongPlaylist;
+            playingSongPlaylist = currentPlaylistName;
             setActive(playlistWidget->currentRow());
+        }
     });
-    connect (marksShortcut, &QShortcut::activated, [=]() {
-        marksWin->raise();
-        marksWin->show();
-        marksWin->move (this->pos().x() + (this->size().width() - marksWin->size().width()) / 2, this->pos().y() + (this->size().height() - marksWin->size().height()) / 2);
-        marksWin->setFocus();
-    });
+    connect (marksShortcut, &QShortcut::activated, this, &MainWindow::marksShow);
 
     QTimer::singleShot(3000, [=]() {
-        // startWidget->close();
-
         this->show();
         this->raise();
         this->setFocus();
@@ -726,18 +764,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
             int index = in.readLine().toInt();
             QString path = in.readLine();
-            QString playlist = in.readLine();
+            QString playlistName = in.readLine();
 
             double position = in.readLine().toDouble();
 
-            qDebug() << index << playlist << position << path;
+            qDebug() << index << playlistName << position << path;
 
-            if (playlist == "") return;
-            if (index > playlists[playlist].size()) return;
-            if (playlists[playlist][index].path != path) return;
+            if (playlistName == "" || playlists.find(playlistName) == playlists.end()) return;
+            if (index > playlists[playlistName].size()) return;
+            if (playlists[playlistName][index].path != path) return;
 
             lastPlaylistName = playingSongPlaylist;
-            playingSongPlaylist = playlist;
+            playingSongPlaylist = playlistName;
             lastTrackID = currentID;
 
             muted = true;
@@ -745,7 +783,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             pause();
             muted = false;
             BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
-            playlistsBar->setCurrentIndex(getPlaylistIndexByName(playlist));
+            playlistsBar->setCurrentIndex(getPlaylistIndexByName(playlistName));
             BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, position), BASS_POS_BYTE);
         }
     });
@@ -756,6 +794,7 @@ MainWindow::~MainWindow()
 {
     remove("cover.png"); // Remove Cover file
     removeDir("C:/amptemp");
+    removeDir("C:/amptemp2");
 
     QString uptime = seconds2qstring((clock() - starttime) / 1000);
     writeLog("Exiting...");
@@ -973,6 +1012,7 @@ bool MainWindow::openFile ()
     for (int i = 0; i < fileNames.length(); i++)
     {
         Song temp(fileNames[i]);
+        temp.countDuration();
 
         TagLib::FileRef f(fileNames[i].toStdWString().c_str());
 
@@ -1005,12 +1045,8 @@ bool MainWindow::openFile ()
             else
                 temp.setName(QString::fromStdWString(title));
         }
-
-
         playlist.push_back(temp);
     }
-
-    // "Audio Files\0*.mo3;*.xm;*.mod;*.s3m;*.it;*.mtm;*.umx;*.mp3;*.mp2;*.mp1;*.ogg;*.wav;*.aif)\0All files\0*.*\0\0";
 
     playlists[currentPlaylistName] = playlist;
 
@@ -1022,6 +1058,12 @@ bool MainWindow::openFile ()
         setActive(0);
     }
     return true;
+}
+void MainWindow::loadLyrics(Song * song) {
+    QString lrcFile = QFileDialog::getOpenFileName(lyricsWin, "Select lyrics file", QDir::homePath(), "Lyrics file (*.lrc)");
+    song->setLrcFile(lrcFile);
+    lyricsWin->lyrics = song->lyrics;
+    lyricsWin->countCurrentLine();
 }
 void MainWindow::reorderPlaylist () {
     vector <Song> neworder;
@@ -1066,14 +1108,16 @@ void MainWindow::removeFile() {
         marksWin->close();
         songTitle->setText("");
         songInfo->setText("");
+        marksBtn->setDisabled(true);
         pauseBtn->setText("\uf04b");
-        clearPrerenderedFft();
         songPosition->setText("00:00");
         songDuration->setText("00:00");
         coverLoaded = false;
         cover = QImage (":/Images/cover-placeholder.png");
         currentID = -1;
         playingSongPlaylist = "";
+        clearPrerenderedFft();
+        lyricsWin->lyrics = vector<pair<float, QString>>();
     }
     else if (globalIndex < currentID)
         currentID--;
@@ -1109,6 +1153,7 @@ bool MainWindow::openFolder () {
         QString fullpath = folder + "/" + musicFiles[i];
 
         Song temp(fullpath);
+        temp.countDuration();
 
         TagLib::FileRef f(fullpath.toStdWString().c_str());
 
@@ -1169,7 +1214,8 @@ bool MainWindow::openFolder () {
 }
 void MainWindow::createPlaylist ()
 {
-    QString name;
+    QString name = "";
+    QString tempPlaylistName = currentPlaylistName;
 
     do {
         bool ok;
@@ -1193,7 +1239,11 @@ void MainWindow::createPlaylist ()
         }
     } while (true);
 
-    drawAllPlaylists();
+    if (name == "") {
+        playlistsBar->setCurrentIndex(getPlaylistIndexByName(tempPlaylistName));
+        qDebug() << currentPlaylistName;
+    } else
+        drawAllPlaylists();
 }
 
 void MainWindow::removePlaylist (int index) {
@@ -1227,13 +1277,15 @@ void MainWindow::removePlaylist (int index) {
             pauseBtn->setText("\uf04b");
             songTitle->setText("");
             songInfo->setText("");
-            clearPrerenderedFft();
             songPosition->setText("00:00");
             songDuration->setText("00:00");
+            marksBtn->setDisabled(true);
             coverLoaded = false;
             cover = QImage (":/Images/cover-placeholder.png");
             currentID = -1;
             playingSongPlaylist = "";
+            clearPrerenderedFft();
+            lyricsWin->lyrics = vector<pair<float, QString>>();
         }
     }
 
@@ -1317,14 +1369,12 @@ void MainWindow::drawPlaylist() {
         QString name = playlist[i].getName();
 
         songItem->setData(Qt::UserRole, i);
-        songItem->setText(name);
+        songItem->setText("[" + seconds2qstring(playlist[i].getDuration()) + "] " + name);
 
         songItem->setToolTip("Name: " + name +
                              "\nDuration: " + seconds2qstring(playlist[i].getDuration()) +
                              "\nFormat: " + playlist[i].getFormat() +
                              "\nSize: " + playlist[i].getFileSizeMB());
-
-        removeDir("C:/amptemp2");
 
         playlistWidget->addItem(songItem);
 
@@ -1352,6 +1402,11 @@ void MainWindow::changeCurrentPlaylist (int index) {
 
     if (tabContent == "\uF067")
     {
+        if (playlistCreating) {
+            playlistsBar->setCurrentIndex(getPlaylistIndexByName(currentPlaylistName));
+            playlistCreating = false;
+            return;
+        }
         index--;
         playlistsBar->setCurrentIndex(index);
         return;
@@ -1429,8 +1484,9 @@ void MainWindow::setActive(QListWidgetItem * item) {
 }
 void MainWindow::setActive(int index) {
     removeDir("C:/amptemp");
-
     removeLoop();
+
+    marksBtn->setDisabled(false);
 
     bool isSameTrack = false;
 
@@ -1450,6 +1506,8 @@ void MainWindow::setActive(int index) {
         temp = playlist[index];
     }
 
+    lyricsWin->lyrics = temp.lyrics;
+    lyricsWin->resetLineCounter();
 
     if (!QFile::exists(temp.path))
     {
@@ -1477,9 +1535,6 @@ void MainWindow::setActive(int index) {
     temp = playlists[playingSongPlaylist][currentID];
     cover = temp.getCover();
 
-    if (currentID > playlists[playingSongPlaylist].size())
-        qDebug() << "Error!";
-
     TagLib::FileRef file(temp.path.toStdWString().c_str());
 
     if (!file.isNull()) {
@@ -1500,20 +1555,15 @@ void MainWindow::setActive(int index) {
 
     BASS_StreamFree(channel);
 
-    qDebug() << temp.path;
-
     if (equoEnabled) {
         createStream(channel, temp.path, BASS_STREAM_DECODE);
 
-        qDebug() << BASS_ErrorGetCode();
         channel = BASS_FX_TempoCreate(channel, NULL);
         equalizerWin->channel = &channel;
         equalizerWin->init();
 
     } else {
         createStream(channel, temp.path, 0);
-
-        qDebug() << BASS_ErrorGetCode();
     }
 
     if (!isSameTrack)
@@ -1532,12 +1582,13 @@ void MainWindow::setActive(int index) {
     }
 
     BASS_ChannelPlay(channel, false);
-    qDebug() << BASS_ErrorGetCode();
+
     if (muted) BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, 0);
     else BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
 
     QString pos = seconds2qstring(getPosition());
     songPosition->setText(pos);
+
     QString len = seconds2qstring(getDuration());
     songDuration->setText(len);
 
@@ -1567,6 +1618,8 @@ void MainWindow::setActive(int index) {
 
     trayIcon->setToolTip("Now playing: " + temp.getName());
     this->setWindowTitle(temp.getName());
+
+    temp.countDuration();
 }
 void MainWindow::forward () {
     if (channel == NULL || playlists[playingSongPlaylist].size() == 1)
@@ -1665,7 +1718,6 @@ void MainWindow::changeVolume (int vol)
 
     writeLog("Volume changed to: " + QString::number(vol));
     BASS_ChannelSetAttribute(channel, BASS_ATTRIB_VOL, volume);
-
     sendMessageToRemoteDevices("vol|" + QString::number(volume * 100));
 }
 void MainWindow::changeRepeat () {
@@ -1698,7 +1750,7 @@ void MainWindow::changeShuffle () {
         shuffleBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
     }
 }
-
+// Seconds (float) to QString
 QString MainWindow::seconds2qstring (float seconds) {
     int hours = (seconds >= 3600) ? (int)seconds / 3600 : 0;
     int minutes = (seconds >= 60) ? ((int)seconds - hours * 3600) / 60 : 0;
@@ -1721,6 +1773,7 @@ QString MainWindow::seconds2qstring (float seconds) {
 
     return result;
 }
+// Convert QString to Seconds (double)
 double MainWindow::qstring2seconds (QString time) {
     time = time.simplified();
 
@@ -1729,6 +1782,13 @@ double MainWindow::qstring2seconds (QString time) {
         int seconds = time.mid(time.indexOf(':') + 1).toInt();
 
         return minutes * 60.0 + seconds;
+    }
+    else if (time.count(':') == 2 && time[0] != '-') {
+        int hours = time.mid(0, time.indexOf(':')).toInt();
+        int minutes = time.mid(time.indexOf(':') + 1, time.lastIndexOf(':')).toInt();
+        int seconds = time.mid(time.lastIndexOf(':') + 1).toInt();
+
+        return hours * 3600 + minutes * 60.0 + seconds;
     }
     else if (time[0] == '-') {
         return getDuration() - qstring2seconds(time.mid(1));
@@ -1842,9 +1902,15 @@ void MainWindow::updateTime() {
             setPosition(loopStart);
         }
 
-        if (!looped && getPosition() >= getDuration())
+        if (!looped && round(getPosition()) >= round(getDuration()))
         {
             writeLog("Song ended");
+
+            if (timerStarted && songTimerMode == 1)
+                songTimerCounter--;
+
+            if (songTimerCounter == 0)
+                songTimerEnded();
 
             if (repeat) {
                 lastTrackID = currentID;
@@ -2093,6 +2159,7 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
             timecode->setText(seconds2qstring(pos) + " (" + playlists[playingSongPlaylist][currentID].marks.find(pos)->second + ")");
         else
             timecode->setText(seconds2qstring(pos));
+
         timecode->adjustSize();
         timecode->show();
     }
@@ -2116,6 +2183,15 @@ void MainWindow::mouseMoveEvent (QMouseEvent * event) {
     else {
         playlistWidget->lower();
         searchSong->lower();
+    }
+
+    if (timerBtn->underMouse() && timerStarted) {
+        if (songTimerMode == 0)
+            timerBtn->setToolTip("Time remaining: " + seconds2qstring(songTimer->remainingTime() / 1000));
+        if (songTimerMode == 1)
+            timerBtn->setToolTip("Tracks remaining: " + QString::number(songTimerCounter));
+    } else {
+        timerBtn->setToolTip("Timer");
     }
 
     if (remoteBtn->underMouse() && remoteServerEnabled)
@@ -2163,19 +2239,21 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
 
             QMenu myMenu;
             myMenu.setMouseTracking(true);
-            myMenu.setStyleSheet("QMenu { background-color: #121212; color: silver }"
-                                 "QMenu::item:disabled { color: gray; }");
+            myMenu.setStyleSheet("QMenu { background-color: #121212; color: silver }");
 
-            myMenu.addAction("Jump to...");
+            QAction * jumpAction = new QAction("Jump to...", this);
+            jumpAction->setShortcut(QKeySequence("Ctrl+J"));
+            jumpAction->setShortcutVisibleInContextMenu(true);
+            jumpAction->setCheckable(true);
+            jumpAction->setChecked(looped);
+            myMenu.addAction(jumpAction);
 
             QAction * loopAction = new QAction("Make loop (A-B)", this);
+            loopAction->setShortcut(QKeySequence("Ctrl+L"));
+            loopAction->setShortcutVisibleInContextMenu(true);
             loopAction->setCheckable(true);
             loopAction->setChecked(looped);
             myMenu.addAction(loopAction);
-
-            QAction * marksAction = new QAction("Marks", this);
-            marksAction->setDisabled((currentID == -1));
-            myMenu.addAction(marksAction);
 
             myMenu.addSeparator();
 
@@ -2192,13 +2270,6 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             {
                 if (selectedItem->text() == "Jump to...")
                     jumpTo();
-                if (selectedItem->text() == "Marks")
-                {
-                    marksWin->raise();
-                    marksWin->show();
-                    marksWin->move (this->pos().x() + (this->size().width() - marksWin->size().width()) / 2, this->pos().y() + (this->size().height() - marksWin->size().height()) / 2);
-                    marksWin->setFocus();
-                }
                 if (looped && selectedItem->text() == "Make loop (A-B)")
                     removeLoop();
                 else if (!looped && selectedItem->text() == "Make loop (A-B)") {
@@ -2240,7 +2311,6 @@ void MainWindow::wheelEvent(QWheelEvent * event) {
         else if (event->angleDelta().ry() > 0) {
             new_time += 3;
         }
-
 
         setPosition(new_time);
         taskbarProgress->setValue(new_time);
@@ -2305,7 +2375,7 @@ void MainWindow::reloadStyles () {
                                   "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }" \
                                   "QListWidget::item:selected { outline: none; border: 0px solid black; color: " + tr(mainColorStr.c_str()) + "; }");
 
-    QScrollBar *vbar = playlistWidget->verticalScrollBar();
+    QScrollBar * vbar = playlistWidget->verticalScrollBar();
     vbar->setStyleSheet("QScrollBar:vertical { outline: 0; border-radius: 20px; border: 0px solid black; width: 5px; background: #101010; }" \
                         "QScrollBar::add-line:vertical { height: 0; }" \
                         "QScrollBar::sub-line:vertical { height: 0; }" \
@@ -2313,7 +2383,7 @@ void MainWindow::reloadStyles () {
                         "QScrollBar::handle:vertical:hover { border-radius: 20px; width: 5px; background: " + tr(mainColorStr.c_str()) + "; }" \
                         "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0px; }");
 
-    QScrollBar *hbar = playlistWidget->horizontalScrollBar();
+    QScrollBar * hbar = playlistWidget->horizontalScrollBar();
     hbar->setStyleSheet("QScrollBar:horizontal { outline: 0; border-radius: 20px; border: 0px solid black; height: 5px; background: #101010; }" \
                         "QScrollBar::add-line:horizontal { height: 0; }" \
                         "QScrollBar::sub-line:horizontal { height: 0; }" \
@@ -2337,6 +2407,10 @@ void MainWindow::reloadStyles () {
         visualBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
     if (equoEnabled)
         equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
+    if (lyricsEnabled)
+        lyricsBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
+    if (timerStarted)
+        timerBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
 
     marksList->setStyleSheet("QListWidget { font-size: 13px; border: 1px solid transparent; outline: none; background-color: #141414; color: silver; padding: 5px; }"
                              "QListWidget::item { outline: none; color: silver; border: 0px solid black; background: rgba(0, 0, 0, 0); }"
@@ -2398,6 +2472,43 @@ void MainWindow::colorChange()
 }
 
 //           --- Web Socket Functions ---
+void MainWindow::remoteControl() {
+    if (!remoteServerEnabled) {
+        if (removeControlServer->listen(QHostAddress::Any)) {
+            qDebug() << "Remote control socket started listening in port " << removeControlServer->serverPort();
+
+            remoteServerEnabled = true;
+            reloadStyles();
+
+            connect(removeControlServer, &QWebSocketServer::newConnection, this, &MainWindow::remoteDeviceConnect);
+        }
+        else {
+            qDebug() << "Failed to start socket! " << removeControlServer->errorString();
+        }
+
+        if (httpServer->listen(QHostAddress::Any, httpServerPort)) {
+            qDebug() << "Http server started with port" << httpServerPort;
+
+            connect(httpServer, &QTcpServer::newConnection, this, &MainWindow::httpNewConnection);
+        }
+        else
+        {
+            qDebug() << "Failed to start http server!";
+        }
+    }
+
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("Remote Control Server");
+
+    QString localAddr = getLocalAddress();
+    if (localAddr != "localhost")
+        msgBox.setText("Remote control server address: " + getLocalAddress() + ":" + QString::number(httpServerPort));
+    else
+        msgBox.setText("Internet connection disabled/not avalible. By the way, you can use " + localAddr + ":" + QString::number(httpServerPort) + " address on this device for control.");
+
+    msgBox.setStyleSheet("background-color: #101010; color: silver;");
+    msgBox.exec();
+}
 void MainWindow::remoteDeviceConnect () {
     qDebug() << "New connection";
 
@@ -2467,7 +2578,7 @@ void MainWindow::httpNewConnection() {
     }
 
     line.replace("<serverip>", getLocalAddress());
-    line.replace("<serverport>", QString::number(9999));
+    line.replace("<serverport>", QString::number(removeControlServer->serverPort()));
 
     QString html = QString::fromStdString("HTTP/1.0 200 Ok\r\n"
                    "Content-Type: text/html; charset=\"utf-8\"\r\n"
@@ -2518,6 +2629,17 @@ void MainWindow::addMark() {
 
     if (dialog.exec() == QDialog::Accepted) {
         double timecode = qstring2seconds(timecodeInput->text());
+
+        if (timecode > getDuration() || timecode < 0)
+        {
+            QMessageBox msgBox;
+            msgBox.setWindowTitle("Error");
+            msgBox.setText("Timecode out of range!");
+            msgBox.setStyleSheet("background-color: #101010; color: silver;");
+            msgBox.exec();
+            return;
+        }
+
         playlists[playingSongPlaylist][currentID].marks[timecode] = descInput->text();
         if (currentPlaylistName == playingSongPlaylist)
             playlist[currentID].marks = playlists[playingSongPlaylist][currentID].marks;
@@ -2526,6 +2648,8 @@ void MainWindow::addMark() {
     drawMarksList();
 }
 void MainWindow::removeMark() {
+    if (marksList->currentRow() == -1) return;
+
     QString itemText = marksList->currentItem()->text();
     int start = itemText.indexOf('[');
     int end = itemText.mid(start + 1).indexOf(']');
@@ -2546,4 +2670,93 @@ void MainWindow::drawMarksList () {
 
     for (auto & mark : playlists[playingSongPlaylist][currentID].marks)
         marksList->addItem("[" + seconds2qstring(mark.first) + "] " + mark.second);
+}
+
+//           --- Song timer Functions ---
+void MainWindow::initTimerWindow() {
+    songTimer = new QTimer(this);
+
+    timerWin = new QWidget();
+    timerWin->setWindowFlags(Qt::Drawer);
+    timerWin->setWindowTitle("Timer");
+    timerWin->setGeometry(0, 0, 300, 180);
+    timerWin->move(this->pos().x() + (this->width() - timerWin->width()) / 2, this->pos().y() + (this->height() - timerWin->height()) / 2);
+    timerWin->setMaximumSize(300, 180);
+    timerWin->setMinimumSize(300, 180);
+    timerWin->setStyleSheet("background-color: #101010; color: silver;");
+
+    QFormLayout form(timerWin);
+
+    QRadioButton * timerModeRadio = new QRadioButton[2];
+    QLineEdit * timerModeLines = new QLineEdit[2];
+    for (int i = 0; i < 2; i++) {
+        timerModeRadio[i].setGeometry(15, 15 + i * 50, 275, 15);
+        timerModeLines[i].setGeometry(15, 35 + i * 50, 275, 20);
+        timerModeLines[i].setDisabled(true);
+
+        connect (&timerModeRadio[i], &QRadioButton::clicked, [=]() {
+            timerModeLines[i].setDisabled(false);
+            timerModeLines[i].setFocus();
+            timerModeLines[i].selectAll();
+            songTimerMode = i;
+        });
+
+        form.addRow(&timerModeRadio[i]);
+        form.addRow(&timerModeLines[i]);
+    }
+
+    timerModeRadio[0].setText("Timer by time");
+    timerModeRadio[1].setText("Timer by songs count");
+
+    timerModeLines[0].setText("00:00");
+    timerModeLines[1].setText("3");
+
+    QPushButton * timerStart = new QPushButton("Start");
+    timerStart->setGeometry(15, timerWin->height() - 45, 130, 30);
+    QPushButton * timerStop = new QPushButton("Stop");
+    timerStop->setGeometry(155, timerWin->height() - 45, 130, 30);
+
+    QLabel * remainingLabel = new QLabel("Remaining: 00:00");
+    remainingLabel->setGeometry(15, timerWin->height() - 75, 275, 20);
+    remainingLabel->hide();
+
+    form.addRow(remainingLabel);
+    form.addRow(timerStart, timerStop);
+
+    connect (timerStart, &QPushButton::clicked, [=]() {
+        if (songTimerMode == -1) return;
+
+        if (timerStarted) {
+            timerStarted = false;
+
+            if (songTimerMode == 0)
+                songTimer->stop();
+            if (songTimerMode == 1)
+                songTimerCounter = -1;
+        }
+
+        if (songTimerMode == 0) {
+            songTimer->setSingleShot(true);
+            songTimer->setInterval(qstring2seconds(timerModeLines[0].text()) * 1000);
+            songTimer->start();
+
+            connect (songTimer, &QTimer::timeout, this, &MainWindow::songTimerEnded);
+        }
+        if (songTimerMode == 1) {
+            songTimerCounter = timerModeLines[1].text().toInt();
+        }
+
+        timerStarted = true;
+        reloadStyles();
+    });
+
+    connect (timerStop, &QPushButton::clicked, [=]() {
+        if (songTimerMode == -1) return;
+
+        if (songTimerMode == 0)
+            songTimer->stop();
+
+        timerBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: silver; }");
+        timerStarted = false;
+    });
 }

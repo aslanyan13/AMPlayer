@@ -23,6 +23,7 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     textShadow->setOffset(0, 0);
 
     trackName = new QLabel (this);
+    trackName->setMouseTracking(true);
     trackName->setGeometry(0, 5, QApplication::desktop()->screenGeometry().width(), 45);
     trackName->setStyleSheet("color: white; font-size: 22px;");
     trackName->setAlignment(Qt::AlignCenter);
@@ -30,6 +31,7 @@ InfoWidget::InfoWidget(QWidget *parent) : QWidget(parent), ui(new Ui::InfoWidget
     trackName->show();
 
     trackInfo = new QLabel (this);
+    trackInfo->setMouseTracking(true);
     trackInfo->setGeometry(0, 50, QApplication::desktop()->screenGeometry().width(), 20);
     trackInfo->setStyleSheet("color: white; font-size: 16px;");
     trackInfo->setAlignment(Qt::AlignCenter);

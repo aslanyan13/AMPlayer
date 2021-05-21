@@ -15,6 +15,7 @@
 #include <QWinTaskbarProgress>
 #include <QListWidgetItem>
 #include <QFormLayout>
+#include <QRadioButton>
 #include <QMenu>
 #include <QCheckBox>
 #include <QInputDialog>
@@ -83,6 +84,7 @@
 #include "infowidget.h"
 #include "customslider.h"
 #include "startwidget.h"
+#include "lyricswindow.h"
 
 #include "fifo_map.hpp"
 
@@ -132,6 +134,7 @@ private slots:
     void makeLoop();
     void updateTime();
 
+    void remoteControl();
     void remoteDeviceConnect ();
     void getRemoteCommands (const QString & command);
     void httpNewConnection ();
@@ -144,22 +147,21 @@ private slots:
                 if (list[nIter].protocol() == QAbstractSocket::IPv4Protocol && list[nIter].toString()[0] == '1')
                     return list[nIter].toString();
         }
+
+        return "localhost";
     }
 
     void settings ();
-    void trackTimer () {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Timer");
-        msgBox.setText("Timer will be added soon!");
-        msgBox.setStyleSheet("background-color: #101010; color: silver;");
-        msgBox.exec();
+    void showSongTimer () {
+        timerWin->raise();
+        timerWin->setFocus();
+        timerWin->show();
     }
-    void audio3D () {
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("3D Audio");
-        msgBox.setText("3D Audio functions will be added soon!");
-        msgBox.setStyleSheet("background-color: #101010; color: silver;");
-        msgBox.exec();
+    void marksShow () {
+        marksWin->raise();
+        marksWin->show();
+        marksWin->move (this->pos().x() + (this->size().width() - marksWin->size().width()) / 2, this->pos().y() + (this->size().height() - marksWin->size().height()) / 2);
+        marksWin->setFocus();
     }
     void equalizer () {
         equalizerWin->raise();
@@ -191,19 +193,32 @@ private slots:
     void editMark();
     void drawMarksList();
 
+    void loadLyrics(Song * song);
+
 private:
     HSTREAM channel;
 
     void createStream(HSTREAM & chan, QString file, DWORD flags) {
+        if (!BASS_StreamFree(chan))
+            qDebug() << BASS_ErrorGetCode();
+
         chan = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
-        if (BASS_ErrorGetCode())
-            chan = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
-        if (BASS_ErrorGetCode())
-            chan = BASS_OPUS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
-        if (BASS_ErrorGetCode())
-            chan = BASS_WEBM_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags, 0);
 
         if (BASS_ErrorGetCode()) {
+            BASS_StreamFree(chan);
+            chan = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
+        }
+        if (BASS_ErrorGetCode()) {
+            BASS_StreamFree(chan);
+            chan = BASS_OPUS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
+        }
+        if (BASS_ErrorGetCode()) {
+            BASS_StreamFree(chan);
+            chan = BASS_WEBM_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags, 0);
+        }
+
+        if (BASS_ErrorGetCode()) {
+            BASS_StreamFree(chan);
             chan = BASS_APE_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
             if (BASS_ErrorGetCode()) {
                 if (!QDir("C:/amptemp").exists())
@@ -214,6 +229,7 @@ private:
             }
         }
         if (BASS_ErrorGetCode()) {
+            BASS_StreamFree(chan);
             remove("C:/amptemp/tmp.ape");
             chan = BASS_SPX_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
             if (BASS_ErrorGetCode()) {
@@ -225,6 +241,7 @@ private:
             }
         }
         if (BASS_ErrorGetCode()) {
+            BASS_StreamFree(chan);
             remove("C:/amptemp/tmp.spx");
             chan = BASS_TTA_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
             if (BASS_ErrorGetCode()) {
@@ -245,9 +262,12 @@ private:
     bool colorChanging = false; // Is color changing mode enabled
     bool coverLoaded = true;
     bool coverBgBlur = true;
+    bool lyricsEnabled = false;
     bool logging = true;
+    bool playlistCreating = false;
     bool remoteServerEnabled = false;
     bool remoteScrolling = false;
+    bool timerStarted = false;
     bool volumeSliderToggled = false;
     bool muted = false;
     bool configLoaded = false;
@@ -268,6 +288,8 @@ private:
     float coverBgOpacity = 255;
 
     int httpServerPort;
+    int songTimerMode = -1;
+    int songTimerCounter = -1;
 
     QWinTaskbarProgress * taskbarProgress;
 
@@ -304,10 +326,11 @@ private:
     QPushButton * repeatBtn;
     QPushButton * shuffleBtn;
     QPushButton * pauseBtn;
-    QPushButton * audio3dBtn;
+    QPushButton * marksBtn;
     QPushButton * equoBtn;
     QPushButton * timerBtn;
     QPushButton * visualBtn;
+    QPushButton * lyricsBtn;
     QPushButton * volumeBtn;
     QPushButton * remoteBtn;
     QPushButton * closeBtn;
@@ -319,6 +342,7 @@ private:
     bool moving;
 
     QTimer * timer;
+    QTimer * songTimer;
 
     Ui::MainWindow * ui;
 
@@ -328,44 +352,30 @@ private:
     equalizerWindow * equalizerWin = nullptr;
     VisualizationWindow * visualWin = nullptr;
     StartWidget * startWidget = nullptr;
+    LyricsWindow * lyricsWin = nullptr;
 
     QWidget * marksWin = nullptr;
     QListWidget * marksList;
+
+    QWidget * timerWin = nullptr;
+    void initTimerWindow();
+    void songTimerEnded () {
+        QTimer::singleShot(3000, [=]() {
+            qDebug() << "Closed!";
+            this->close();
+        });
+
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Timer timed out");
+        msgBox.setText("Program will be closed in 3 seconds...");
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
+        msgBox.exec();
+    }
 
     QWebSocketServer * removeControlServer;
     QTcpServer * httpServer;
     QList <QWebSocket *> remoteDevices;
 
-    void remoteControl() {
-        if (!remoteServerEnabled) {
-            if (removeControlServer->listen(QHostAddress::Any, 9999)) {
-                qDebug() << "Remote control socket started listening in port 9999!";
-
-                remoteServerEnabled = true;
-                reloadStyles();
-
-                connect(removeControlServer, &QWebSocketServer::newConnection, this, &MainWindow::remoteDeviceConnect);
-            }
-            else {
-                qDebug() << "Failed to start socket! " << removeControlServer->errorString();
-            }
-
-            if (httpServer->listen(QHostAddress::Any, httpServerPort)) {
-                qDebug() << "Http server started with port" << httpServerPort;
-
-                connect(httpServer, &QTcpServer::newConnection, this, &MainWindow::httpNewConnection);
-            } else
-            {
-                qDebug() << "Failed to start http server!";
-            }
-        }
-
-        QMessageBox msgBox;
-        msgBox.setWindowTitle("Remote Control Server");
-        msgBox.setText("Remote control server address: " + getLocalAddress() + ":" + QString::number(httpServerPort));
-        msgBox.setStyleSheet("background-color: #101010; color: silver;");
-        msgBox.exec();
-    }
     void sendMessageToRemoteDevices (QString message) {
         for (auto & device : remoteDevices) {
             device->sendTextMessage(message);
@@ -416,6 +426,7 @@ private:
             else
                 BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, pos), BASS_POS_BYTE);
         }
+        lyricsWin->countCurrentLine();
     }
 
     float getDuration () {
@@ -480,17 +491,15 @@ private:
             qDebug() << pos;
             qDebug() << time;
 
-            if (time > getDuration() || time == -1)
+            if (time > getDuration() || time == -1 || time < 0)
             {
                 QMessageBox msgBox;
                 msgBox.setWindowTitle("Error");
-                msgBox.setText("Incorrect position!");
+                msgBox.setText("Timecode out of range!");
                 msgBox.setStyleSheet("background-color: #101010; color: silver;");
                 msgBox.exec();
             } else {
-                songPosition->setText(pos);
-                BASS_ChannelSetPosition(channel, BASS_ChannelSeconds2Bytes(channel, time), BASS_POS_BYTE);
-                taskbarProgress->setValue(time);
+                setPosition(time);
             }
         }
     }

@@ -8,11 +8,8 @@
 
 #include <iostream>
 
-#include "startwidget.h"
-
 int main(int argc, char *argv[])
 {
-
     srand(time(NULL));
 
     QApplication a(argc, argv);
@@ -23,11 +20,6 @@ int main(int argc, char *argv[])
     a.setObjectName("AMPlayer");
     a.setStartDragTime(1000);
     a.setQuitOnLastWindowClosed(false);
-
-    /*StartWidget * widget = new StartWidget();
-    widget->raise();
-    widget->show();
-    */
 
     for (int i = 1; i <= 5; i++)
         a.setEffectEnabled((Qt::UIEffect)i, true);
@@ -51,9 +43,7 @@ int main(int argc, char *argv[])
 
     BASS_SetConfig(BASS_CONFIG_SRC, 16);
 
-    auto start = clock();
     MainWindow w;
-    qDebug() << "Start - " << clock() - start << "ms";
 
     return a.exec();
 }

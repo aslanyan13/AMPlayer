@@ -2,6 +2,7 @@
 
 void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlists)
 {
+    float start = clock();
     QFile file(filename);
 
     if (!file.open(QFile::ReadOnly | QFile::Text))
@@ -22,6 +23,7 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
                     foreach(const QXmlStreamAttribute &attr, xmlReader.attributes()) {
                         if (attr.name().toString() == "name") {
                             attribute_value = attr.value().toString();
+                            if (attribute_value == "") continue;
 
                             playlists[attribute_value] = vector<Song>();
                         }
@@ -31,11 +33,14 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
                 if (xmlReader.name() == "song" && attribute_value != "")
                 {
                     QString jsonData;
+                    QString lrcFile;
 
                     foreach(const QXmlStreamAttribute &attr, xmlReader.attributes()) {
                         if (attr.name().toString() == "marks") {
                             jsonData = attr.value().toString();
                         }
+                        if (attr.name().toString() == "lrc")
+                            lrcFile = attr.value().toString();
                     }
 
                     QJsonObject obj;
@@ -58,6 +63,9 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
                     }
 
                     Song temp(xmlReader.readElementText());
+                    temp.countDuration();
+                    temp.setLrcFile(lrcFile);
+
                     foreach(const QString& key, obj.keys()) {
                         QJsonValue value = obj.value(key);
                         // qDebug() << "Key = " << key << ", Value = " << value.toString();
@@ -98,6 +106,7 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
             xmlReader.readNext();
         }
     }
+    qDebug() << "Playlist readed! " << clock() - start;
 }
 void PlaylistReader::writePlaylists(fifo_map<QString, vector<Song>> playlists)
 {
@@ -119,6 +128,7 @@ void PlaylistReader::writePlaylists(fifo_map<QString, vector<Song>> playlists)
             xmlWriter.writeStartElement("playlist");
             xmlWriter.writeAttribute("name", playlist.first);
 
+
             for (int i = 0; i < playlist.second.size(); i++)
             {
                 xmlWriter.writeStartElement("song");
@@ -135,6 +145,8 @@ void PlaylistReader::writePlaylists(fifo_map<QString, vector<Song>> playlists)
                 json += "}";
 
                 xmlWriter.writeAttribute("marks", json);
+                if (playlist.second[i].lrcFile != "")
+                    xmlWriter.writeAttribute("lrc", playlist.second[i].lrcFile);
                 xmlWriter.writeCharacters(playlist.second[i].path);
 
                 xmlWriter.writeEndElement();

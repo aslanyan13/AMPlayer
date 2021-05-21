@@ -16,10 +16,12 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <windows.h>
 #include <gdiplus.h>
 #include <gdiplus/gdiplusheaders.h>
 #include <string>
+#include <utility>
 #include <map>
 
 #include <id3v2tag.h>
@@ -47,32 +49,53 @@
 using namespace std;
 using namespace TagLib;
 
-
 class Song
 {
 private:
     QString name = "";
     QString suffix = "";
+
     float sampleRate;
     float bitrate;
+    float dur = -1;
 public:
+    vector <pair<float, QString>> lyrics;
+
+    QString lrcFile = "";
     QString path = "";
+
     map <int, QString> marks;
 
     Song();
     Song(QString p) : path(p) {
-        // QMimeDatabase db;
-        // QMimeType * mime = new QMimeType(db.mimeTypeForFile(p, QMimeDatabase::MatchContent));
-        // suffix = mime->preferredSuffix();
-        // suffix = suffix.toUpper();
-
         suffix = path.mid(path.lastIndexOf('.') + 1);
         suffix = suffix.toUpper();
 
         if (suffix == "") suffix = "Unknown";
-
-        // delete mime;
     };
+
+    Song(const Song& o) = default;
+    Song(Song&& o) = default;
+    Song& operator=(const Song&) = default;
+
+    void setLrcFile (QString path) {
+        if (path == "") return;
+
+        lrcFile = path;
+        parseLyrics();
+    }
+
+    void parseLyrics();
+    void countDuration() {
+        HSTREAM stream;
+
+        createStream(stream, path, 0);
+
+        QWORD len = BASS_ChannelGetLength(stream, 0); // the length in bytes
+        this->dur = BASS_ChannelBytes2Seconds(stream, len);
+
+        BASS_StreamFree(stream);
+    }
 
     void setName (QString n) {
         this->name = n;
@@ -104,48 +127,20 @@ public:
         return false;
     }
 
-    void createStream(HSTREAM & chan, QString file, DWORD flags) {
-        chan = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
-        if (BASS_ErrorGetCode())
-            chan = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
-        if (BASS_ErrorGetCode())
-            chan = BASS_OPUS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
-        if (BASS_ErrorGetCode())
-            chan = BASS_WEBM_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags, 0);
 
-        if (BASS_ErrorGetCode()) {
-            chan = BASS_APE_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
-            if (BASS_ErrorGetCode()) {
-                if (!QDir("C:/amptemp2").exists())
-                    QDir().mkdir("C:/amptemp2");
-
-                QFile::copy(file, "C:/amptemp2/tmp.ape");
-                chan = BASS_SPX_StreamCreateFile(false, "C:/amptemp2/tmp.ape", 0, 0, flags);
-            }
+    float qstring2seconds (QString timecode) {
+        if (timecode.contains(':') && timecode.count('.') == 1) {
+            return qstring2seconds(timecode.mid(0, timecode.indexOf('.'))) + timecode.mid(timecode.indexOf('.') + 1).toFloat() / 100.0f;
         }
-        if (BASS_ErrorGetCode()) {
-            remove("C:/amptemp2/tmp.ape");
-            chan = BASS_SPX_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
-            if (BASS_ErrorGetCode()) {
-                if (!QDir("C:/amptemp2").exists())
-                    QDir().mkdir("C:/amptemp2");
+        else if (timecode.contains(':')) {
+            float minutes = timecode.mid(0, timecode.indexOf(':')).toFloat();
+            float seconds = timecode.mid(timecode.indexOf(':') + 1).toFloat();
 
-                QFile::copy(file, "C:/amptemp2/tmp.spx");
-                chan = BASS_SPX_StreamCreateFile(false, "C:/amptemp2/tmp.spx", 0, 0, flags);
-            }
-        }
-        if (BASS_ErrorGetCode()) {
-            remove("C:/amptemp2/tmp.spx");
-            chan = BASS_TTA_StreamCreateFile(false, file.toStdString().c_str(), 0, 0, flags);
-            if (BASS_ErrorGetCode()) {
-                if (!QDir("C:/amptemp2").exists())
-                    QDir().mkdir("C:/amptemp2");
-
-                QFile::copy(file, "C:/amptemp2/tmp.tta");
-                chan = BASS_TTA_StreamCreateFile(false, "C:/amptemp2/tmp.tta", 0, 0, flags);
-            }
+            return minutes * 60 + seconds;
         }
     }
+
+    void createStream(HSTREAM & chan, QString file, DWORD flags);
 
     double getDuration();
     QString getFormat();

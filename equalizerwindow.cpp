@@ -92,7 +92,7 @@ equalizerWindow::equalizerWindow(QWidget *parent) : QWidget(parent), ui(new Ui::
 
     QLabel * hint = new QLabel(this);
     hint->setStyleSheet("color: gray");
-    hint->setText("* Press right button to return default value");
+    hint->setText("*Hint: Press right button to return default value");
     hint->setGeometry(20, 270, this->size().width() - 20, 20);
     hint->show();
 }

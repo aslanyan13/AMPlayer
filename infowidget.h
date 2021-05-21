@@ -45,7 +45,7 @@ private:
     QLabel * trackInfo;
 
     void mouseMoveEvent (QMouseEvent * event) {
-        if (this->underMouse() || bg->underMouse()) {
+        if (this->underMouse() || bg->underMouse() || trackName->underMouse() || trackInfo->underMouse()) {
             timer->stop();
 
             QPropertyAnimation * animation = new QPropertyAnimation(this, "windowOpacity");

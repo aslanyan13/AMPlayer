@@ -6,16 +6,7 @@ Song::Song()
 }
 
 double Song::getDuration () {
-    HSTREAM stream;
-
-    createStream(stream, path, 0);
-
-    QWORD len = BASS_ChannelGetLength(stream, 0); // the length in bytes
-    double dur = BASS_ChannelBytes2Seconds(stream, len);
-
-    BASS_StreamFree(stream);    // Clear memory
-
-    return dur; // the length in seconds
+    return this->dur; // the length in seconds
 }
 QString Song::getFormat () {
     return suffix;
@@ -60,6 +51,7 @@ QImage Song::getCover() {
 
             break;
         }
+        delete file;
     }
 
     if (this->getFormat() == "MP3") {
@@ -127,6 +119,54 @@ QImage Song::getCover() {
     DeleteObject(handleToSliceRet);
 
     delete bitmap;
-
     return cover;
+}
+void Song::parseLyrics() {
+    QFile file (lrcFile);
+
+    if (file.open(QIODevice::ReadWrite | QFile::Text)) {
+        while (!file.atEnd()) {
+            QString line = file.readLine();
+            line = line.simplified();
+            QString text = line.mid(line.indexOf("]") + 1);
+            float time = qstring2seconds(line.mid(1, line.indexOf(']') - 1));
+
+            if (isnan(time)) continue;
+            lyrics.push_back(make_pair(time, text));
+        }
+    } else {
+        qDebug() << "Error!";
+        qDebug() << file.errorString();
+    }
+}
+void Song::createStream(HSTREAM & chan, QString file, DWORD flags) {
+    if (getFormat() == "FLAC" || getFormat() == "OGA")
+        chan = BASS_FLAC_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
+    else if (getFormat() == "OPUS")
+        chan = BASS_OPUS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
+    else if (getFormat() == "WEBM" || getFormat() == "MKA" || getFormat() == "MKV")
+        chan = BASS_WEBM_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags, 0);
+    else if (getFormat() == "APE") {
+        if (!QDir("C:/amptemp2").exists())
+            QDir().mkdir("C:/amptemp2");
+
+        QFile::copy(file, "C:/amptemp2/tmp.ape");
+        chan = BASS_APE_StreamCreateFile(false, "C:/amptemp2/tmp.ape", 0, 0, flags);
+    }
+    else if (getFormat() == "SPX") {
+        if (!QDir("C:/amptemp2").exists())
+            QDir().mkdir("C:/amptemp2");
+
+        QFile::copy(file, "C:/amptemp2/tmp.spx");
+        chan = BASS_SPX_StreamCreateFile(false, "C:/amptemp2/tmp.spx", 0, 0, flags);
+    }
+    else if (getFormat() == "TTA") {
+        if (!QDir("C:/amptemp2").exists())
+            QDir().mkdir("C:/amptemp2");
+
+        QFile::copy(file, "C:/amptemp2/tmp.tta");
+        chan = BASS_TTA_StreamCreateFile(false, "C:/amptemp2/tmp.tta", 0, 0, flags);
+    }
+    else
+        chan = BASS_StreamCreateFile(false, file.toStdWString().c_str(), 0, 0, flags);
 }
