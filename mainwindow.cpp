@@ -541,9 +541,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         BASS_StreamFree(channel);
 
         if (equoEnabled) {
-            createStream(channel, temp.path, BASS_STREAM_DECODE);
-
-            channel = BASS_FX_TempoCreate(channel, NULL);
+            createStream(channel, temp.path, BASS_STREAM_DECODE | BASS_STREAM_PRESCAN | BASS_SAMPLE_FX);
             equalizerWin->channel = &channel;
             equalizerWin->init();
             equoBtn->setStyleSheet("QPushButton { font-size: 14px; margin-top: 10px; border: 0px solid silver; background-color: #101010; color: " + tr(mainColorStr.c_str()) + "; }");
@@ -739,7 +737,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         removeFile();
     });
     connect (removePlaylistShortcut, &QShortcut::activated, [=]() {
-        removePlaylist(getPlaylistIndexByName(currentPlaylistName));
+        removePlaylist(getPlaylistIndexByName(currentPlaylistName), false);
     });
     connect (removeMarkShortcut, &QShortcut::activated, [=]() {
         removeMark();
@@ -1245,14 +1243,69 @@ void MainWindow::createPlaylist ()
     } else
         drawAllPlaylists();
 }
+void MainWindow::renamePlaylist(int index) {
+    QString newName = "";
+    QString oldName = playlistsBar->tabText(index);
+    QString currentName = currentPlaylistName;
 
-void MainWindow::removePlaylist (int index) {
+    do {
+        bool ok;
+        newName = QInputDialog::getText(this, tr("Playlist Name"),  tr("Playlist name:"), QLineEdit::Normal, oldName, &ok);
+        newName = newName.simplified();
+
+        if (ok && !newName.isEmpty())
+        {
+            if (playlists.find(newName) != playlists.end()) {
+                QMessageBox msgBox;
+                msgBox.setText("Playlists \'" + newName + "\' already exists!");
+                msgBox.setStyleSheet("background-color: #101010; color: silver;");
+                msgBox.exec();
+            } else {
+                renamingPlaylist = true;
+                fifo_map <QString, vector <Song>> tempPlaylists;
+
+                for (auto & playlist : playlists) {
+                    if (playlist.first == oldName)
+                        tempPlaylists[newName] = playlist.second;
+                    else
+                        tempPlaylists[playlist.first] = playlist.second;
+                }
+
+                playlists.clear();
+                playlists.insert(tempPlaylists.begin(), tempPlaylists.end());
+
+                if (oldName == playingSongPlaylist) playingSongPlaylist = newName;
+                if (oldName == currentPlaylistName) currentPlaylistName = newName;
+
+                break;
+            }
+        } else {
+            break;
+        }
+    } while (true);
+
+    if (newName == "") {
+        playlistsBar->setCurrentIndex(getPlaylistIndexByName(oldName));
+        qDebug() << currentPlaylistName;
+        renamingPlaylist = false;
+        return;
+    } else
+        drawAllPlaylists();
+
+    if (oldName == currentName)
+        playlistsBar->setCurrentIndex(getPlaylistIndexByName(newName));
+    else
+        playlistsBar->setCurrentIndex(getPlaylistIndexByName(currentName));
+
+    renamingPlaylist = false;
+}
+void MainWindow::removePlaylist (int index, bool clear) {
     QString playlistName = playlistsBar->tabText(index);
 
     if (playlists[playlistName].size() > 0) {
         QMessageBox msgBox;
         msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setText("Are you sure to delete \'" + playlistName + "\'playlist?");
+        msgBox.setText("Are you sure to " + tr((clear) ? "clear" : "delete") + " \'" + playlistName + "\'playlist?");
         msgBox.setStyleSheet("background-color: #101010; color: silver;");
         msgBox.setInformativeText("Playlist contains " + QString::fromStdString(to_string(playlists[playlistName].size())) + " songs.");
         int ret = msgBox.exec();
@@ -1294,13 +1347,17 @@ void MainWindow::removePlaylist (int index) {
 
     if (playlistName == "Default") playlists["Default"] = vector<Song>();
     else {
-        playlists.erase(playlistName);
-    }
+        if (!clear) {
+            playlists.erase(playlistName);
 
-    if (playingSongPlaylist == "")
-        currentPlaylistName = "Default";
-    else
-        currentPlaylistName = playingSongPlaylist;
+            if (playingSongPlaylist == "")
+                currentPlaylistName = "Default";
+            else
+                currentPlaylistName = playingSongPlaylist;
+        } else {
+            playlists[playlistName] = vector<Song>();
+        }
+    }
 
     playlist = playlists[currentPlaylistName];
 
@@ -1333,9 +1390,18 @@ void MainWindow::drawAllPlaylists ()
             i = 0;
     }
 
+    i = 0;
     for (auto &playlist : playlists)
     {
+        float totalDur = 0;
+        for (int j = 0; j < playlist.second.size(); j++)
+            totalDur += playlist.second[j].getDuration();
+
         playlistsBar->addTab(playlist.first);
+        playlistsBar->setTabToolTip(i, "Playlist: " + playlist.first +
+                                     "\nContains: " + QString::number(playlist.second.size()) + " songs" +
+                                     "\nTotal duration: " + seconds2qstring(totalDur));
+        i++;
     }
 
     playlistsBar->addTab("\uf067");
@@ -1437,10 +1503,21 @@ void MainWindow::playlistsBarContextMenu (const QPoint& point) {
     QPoint globalPos = playlistsBar->mapToGlobal(point);
 
     QMenu myMenu;
-    myMenu.setStyleSheet("background-color: #101010; color: silver");
+    myMenu.setStyleSheet("QMenu { background-color: #101010; color: silver; }"
+                         "QMenu::item:disabled { color: gray; }");
     myMenu.addAction("Create Playlist");
-    myMenu.addAction("Rename");
-    myMenu.addAction("Remove");
+
+    QAction renameAction;
+    renameAction.setText("Rename");
+    renameAction.setDisabled(playlistsBar->tabText(tabIndex) == "Default" ? true : false);
+    myMenu.addAction(&renameAction);
+
+    myMenu.addAction("Clear");
+
+    QAction removeAction;
+    removeAction.setText("Remove");
+    removeAction.setDisabled(playlistsBar->tabText(tabIndex) == "Default" ? true : false);
+    myMenu.addAction(&removeAction);
 
     QAction* selectedItem = myMenu.exec(globalPos);
 
@@ -1449,9 +1526,13 @@ void MainWindow::playlistsBarContextMenu (const QPoint& point) {
         if (selectedItem->text() == "Create Playlist") {
             createPlaylist();
         }
+        if (selectedItem->text() == "Rename")
+            renamePlaylist(tabIndex);
         if (selectedItem->text() == "Remove") {
-            removePlaylist(tabIndex);
+            removePlaylist(tabIndex, false);
         }
+        if (selectedItem->text() == "Clear")
+            removePlaylist(tabIndex, true);
     }
 }
 void MainWindow::removeDir(QString dir)
@@ -1557,8 +1638,6 @@ void MainWindow::setActive(int index) {
 
     if (equoEnabled) {
         createStream(channel, temp.path, BASS_STREAM_DECODE);
-
-        channel = BASS_FX_TempoCreate(channel, NULL);
         equalizerWin->channel = &channel;
         equalizerWin->init();
 
@@ -1990,7 +2069,7 @@ void MainWindow::paintEvent(QPaintEvent * event) {
     QColor color = mainColor;
 
     vector <int> marksPos;
-    if (currentID != -1) {
+    if (currentID != -1 && !renamingPlaylist) {
         for (auto &mark : playlists[playingSongPlaylist][currentID].marks) {
             marksPos.push_back((mark.first / getDuration() * 140) + 1);
         }

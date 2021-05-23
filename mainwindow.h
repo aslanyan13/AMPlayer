@@ -112,7 +112,8 @@ private slots:
     bool openFolder ();
 
     void createPlaylist();
-    void removePlaylist(int index);
+    void removePlaylist(int index, bool clear = false);
+    void renamePlaylist(int index);
 
     void menuContext ();
     void trayContext ();
@@ -267,6 +268,7 @@ private:
     bool playlistCreating = false;
     bool remoteServerEnabled = false;
     bool remoteScrolling = false;
+    bool renamingPlaylist = false;
     bool timerStarted = false;
     bool volumeSliderToggled = false;
     bool muted = false;
