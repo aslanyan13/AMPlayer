@@ -374,8 +374,6 @@ private:
         msgBox.exec();
     }
 
-    QWidget * dragWidget;
-    QLabel * dragWidgetLabel;
     QLabel * dropWidget;
 
     QWebSocketServer * removeControlServer;
@@ -516,17 +514,6 @@ private:
         drawPlaylist();
         playlists[currentPlaylistName] = playlist;
 
-    }
-    bool eventFilter(QObject * obj, QEvent * event)
-    {
-        if(event->type() == QEvent::DragEnter)
-            qDebug("Enter");
-        if (event->type() == QEvent::DragLeave)
-            qDebug("Leave");
-        if (event->type() == QEvent::Drop)
-            qDebug("Drop");
-
-        return QObject::eventFilter(obj, event);
     }
 
     QString seconds2qstring (float seconds);

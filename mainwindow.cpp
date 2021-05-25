@@ -787,8 +787,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     });
     QTimer::singleShot(5000, startWidget, &StartWidget::close);
 
-    this->installEventFilter(this);
-    this->centralWidget()->installEventFilter(this);
     this->setAcceptDrops(true);
     this->setAttribute( Qt::WA_AcceptDrops, true);
     this->centralWidget()->setAcceptDrops(true);
