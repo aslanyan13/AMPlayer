@@ -374,6 +374,10 @@ private:
         msgBox.exec();
     }
 
+    QWidget * dragWidget;
+    QLabel * dragWidgetLabel;
+    QLabel * dropWidget;
+
     QWebSocketServer * removeControlServer;
     QTcpServer * httpServer;
     QList <QWebSocket *> remoteDevices;
@@ -413,6 +417,117 @@ private:
     void mousePressEvent (QMouseEvent * event);
     void mouseMoveEvent (QMouseEvent * event);
     void wheelEvent (QWheelEvent * event);
+
+    void dragEnterEvent(QDragEnterEvent *event)
+    {
+        QList <QUrl> list = event->mimeData()->urls();
+        if (list.size() == 0)
+            return;
+
+        dropWidget->raise();
+        dropWidget->show();
+
+        event->acceptProposedAction();
+    }
+    void dragLeaveEvent(QDragLeaveEvent * event)
+    {
+        dropWidget->hide();
+    }
+    void dropEvent (QDropEvent * event)
+    {
+        QList <QUrl> list = event->mimeData()->urls();
+
+        int duplicatesCount = 0;
+        for (auto & file : list) {
+            QString path = file.path();
+            path = path.mid(1);
+            QDir dir(path);
+            if (dir.exists())
+                continue;
+
+            qDebug() << path << dir.exists();
+
+            Song temp(path);
+
+            QString formats = "*.tta *.spx *.ape *.mov *.ac3 *.asf *.webm *.wma *.adt *.adts *.wm *.wmv *.3g2 *.3gp *.flac *.aac *.mkv *.mka *.m4a *.m4b *.m4r *.mpa *.mpc *.mpeg *.m4p *.mp4 *.mp3 *.mp2 *.mp1 *.opus *.oga *.ogg *.aif *.aiff *.aifc *.wav *.avi";
+            formats = formats.toUpper();
+
+            if (formats.indexOf(temp.getFormat()) == -1)
+            {
+                duplicatesCount++;
+                continue;
+            }
+
+            temp.countDuration();
+
+            TagLib::FileRef f(path.toStdWString().c_str());
+
+            wstring artist = L"", title = L"";
+
+            // If file not load failed
+            if (!f.isNull()) {
+                artist = f.tag()->artist().toCWString();
+                title = f.tag()->title().toCWString();
+            }
+
+            writeLog("Opened file: " + path);
+
+            if (artist == L"" && title.find('-') == wstring::npos) {
+                artist = L"Unknown Artist";
+            } else if (artist == L"" && title.find('-') != wstring::npos) {
+                artist = L"";
+            }
+
+            if (title == L"") {
+                temp.setNameFromPath();
+            } else {
+                if (artist != L"")
+                    temp.setName(QString::fromStdWString(artist) + " - " + QString::fromStdWString(title));
+                else
+                    temp.setName(QString::fromStdWString(title));
+            }
+
+            if (count(playlist.begin(), playlist.end(), temp) != 0)
+            {
+                duplicatesCount++;
+                continue;
+            }
+
+            playlist.push_back(temp);
+        }
+        dropWidget->hide();
+
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Files adding");
+
+        if (list.length() > 0 && duplicatesCount != list.length()) {
+            msgBox.setText(tr(to_string(list.length() - duplicatesCount).c_str()) + " new files added to playlist successfully!");
+        }
+        else if (duplicatesCount == list.length() && list.length() > 0) {
+            msgBox.setText ("0 new files added!");
+        }
+        else if (list.length() == 0) {
+            msgBox.setText("There are no audio files in this folder!");
+        }
+
+        msgBox.setStyleSheet("background-color: #101010; color: silver;");
+        msgBox.exec();
+
+        drawPlaylist();
+        playlists[currentPlaylistName] = playlist;
+
+    }
+    bool eventFilter(QObject * obj, QEvent * event)
+    {
+        if(event->type() == QEvent::DragEnter)
+            qDebug("Enter");
+        if (event->type() == QEvent::DragLeave)
+            qDebug("Leave");
+        if (event->type() == QEvent::Drop)
+            qDebug("Drop");
+
+        return QObject::eventFilter(obj, event);
+    }
 
     QString seconds2qstring (float seconds);
     double qstring2seconds (QString time);

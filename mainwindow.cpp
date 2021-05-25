@@ -786,6 +786,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
     });
     QTimer::singleShot(5000, startWidget, &StartWidget::close);
+
+    this->installEventFilter(this);
+    this->centralWidget()->installEventFilter(this);
+    this->setAcceptDrops(true);
+    this->setAttribute( Qt::WA_AcceptDrops, true);
+    this->centralWidget()->setAcceptDrops(true);
+    this->centralWidget()->setAttribute(Qt::WA_AcceptDrops, true);
+
+    dropWidget = new QLabel("\uf574", this);
+    dropWidget->setGeometry(0, 0, 800, 630);
+    dropWidget->setFont(fontAwesome);
+    dropWidget->installEventFilter(this);
+    dropWidget->setAcceptDrops(true);
+    dropWidget->setAlignment(Qt::AlignCenter);
+    dropWidget->setStyleSheet("font-size: 60px; color: silver; background: rgba(16, 16, 16, 0.5);");
+    dropWidget->hide();
 }
 
 MainWindow::~MainWindow()

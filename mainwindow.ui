@@ -47,6 +47,12 @@
    <property name="mouseTracking">
     <bool>true</bool>
    </property>
+   <property name="tabletTracking">
+    <bool>true</bool>
+   </property>
+   <property name="acceptDrops">
+    <bool>true</bool>
+   </property>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
