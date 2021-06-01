@@ -7,7 +7,7 @@
 * [Fifo Map](https://github.com/nlohmann/fifo_map)
 
 ### Features:
-* Standart audioplayer functions (playlist creating, editing, shuffle, repeat, etc)
+* Standard audioplayer functions (playlist creating, editing, shuffle, repeat, etc)
 * Remote control 
 * Lyrics display (needs .lrc file)
 * Timer (by time or songs count)
