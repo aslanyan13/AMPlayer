@@ -34,6 +34,9 @@ public:
     ~VisualizationWindow();
 
     QPushButton * closeBtn;
+    void clearPeaks() {
+        globalPeaks.clear();
+    }
 private:
     bool transparentBg = false;
     bool alwaysOnTop = false;
@@ -51,15 +54,17 @@ private:
     QLabel * windowTitle;
 
     QPushButton * minimizeBtn;
+    QPushButton * previousBtn;
+    QPushButton * nextBtn;
 
     QPoint lastMousePosition;
     bool moving;
 
+    std::vector <int> globalPeaks;
 
     void paintEvent(QPaintEvent * event);
     void mousePressEvent (QMouseEvent * event);
     void mouseMoveEvent (QMouseEvent * event);
-
 };
 
 #endif // VISUALIZATIONWINDOW_H

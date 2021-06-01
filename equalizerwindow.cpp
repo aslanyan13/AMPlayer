@@ -22,7 +22,7 @@ equalizerWindow::equalizerWindow(QWidget *parent) : QWidget(parent), ui(new Ui::
     templates->addItem("Rock");
     templates->addItem("Metal");
     templates->addItem("None");
-    templates->show();
+    templates->hide();
 
     for (int i = 0; i < FREQS_COUNT; i++)
     {

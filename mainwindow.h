@@ -191,7 +191,6 @@ private slots:
 
     void addMark();
     void removeMark();
-    void editMark();
     void drawMarksList();
 
     void loadLyrics(Song * song);

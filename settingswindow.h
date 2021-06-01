@@ -20,6 +20,8 @@
 #include <iostream>
 #include <string>
 
+#include "customslider.h"
+
 using namespace std;
 
 namespace Ui {
@@ -45,27 +47,14 @@ public:
     ~settingsWindow();
 
     void init();
+    void reloadStyles();
 
 private slots:
     void slot_close() { this->close(); };
-    void changeColor ();
-
 private:
     Ui::settingsWindow *ui;
 
-    void mouseMoveEvent (QMouseEvent * event);
-    void mousePressEvent (QMouseEvent * event);
-
-    void reloadStyles();
-
-    QPoint lastMousePosition;
-    bool moving;
-
-    QWidget * titlebarWidget;
-    QLabel * windowTitle;
-    QPushButton * closeBtn;
-    QPushButton * minimizeBtn;
-    QTabWidget  * tabs;
+    CustomSlider * colorSpeedSlider;
 };
 
 #endif // SETTINGSWINDOW_H

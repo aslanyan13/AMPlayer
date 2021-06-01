@@ -194,8 +194,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QPoint globalPos = marksList->mapToGlobal(point);
 
         QMenu myMenu;
-
-        myMenu.addAction("Edit");
         myMenu.addAction("Remove");
 
         myMenu.setStyleSheet("QMenu { icon-size: 8px; background-color: #101010; color: silver; }");
@@ -204,9 +202,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
         if (selectedItem)
         {
-            if (selectedItem->text() == "Edit") {
-
-            }
             if (selectedItem->text() == "Remove")
                 removeMark();
         }
@@ -599,19 +594,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             playAction.setIconVisibleInMenu(true);
             myMenu.addAction(&playAction);
 
-            myMenu.addSeparator();
-
-            QAction editAction;
-            editAction.setText("Edit");
-            editAction.setObjectName("edit");
-            editAction.setIconVisibleInMenu(true);
-            myMenu.addAction(&editAction);
-
             myMenu.addAction("Remove");
 
             myMenu.setStyleSheet("QMenu { icon-size: 8px; background-color: #101010; color: silver; }"
-                                 "QMenu::item#play { icon-size: 8px; }"
-                                 "QMenu::item#edit { icon-size: 12px; }"
                                  "QMenu::item { background: transparent; }");
 
             QAction * selectedItem = myMenu.exec(globalPos);
@@ -851,7 +836,6 @@ void MainWindow::menuContext () {
 
     myMenu.addSeparator();
     myMenu.addAction("Settings");
-    myMenu.addAction("About AMPlayer");
     myMenu.addSeparator();
     myMenu.addAction("Exit");
 
@@ -1013,6 +997,7 @@ bool MainWindow::openFile ()
     QStringList formatsList = formats.split(" ");
     formatsList.sort();
     QString sortedFormats = formatsList.join(" ");
+    qDebug() << formatsList.join(", ").toUpper();
 
     dialog.setNameFilter("Audio files (" + sortedFormats + ")");
 
@@ -1698,6 +1683,7 @@ void MainWindow::setActive(int index) {
         writeLog("Song changed to: " + playlistWidget->currentItem()->text());
     }
 
+    visualWin->clearPeaks();
     setTitle();
     reloadStyles();
 
@@ -2337,8 +2323,6 @@ void MainWindow::mousePressEvent (QMouseEvent * event) {
             QAction * jumpAction = new QAction("Jump to...", this);
             jumpAction->setShortcut(QKeySequence("Ctrl+J"));
             jumpAction->setShortcutVisibleInContextMenu(true);
-            jumpAction->setCheckable(true);
-            jumpAction->setChecked(looped);
             myMenu.addAction(jumpAction);
 
             QAction * loopAction = new QAction("Make loop (A-B)", this);
@@ -2420,7 +2404,7 @@ void MainWindow::settings () {
     settingsWin->raise();
     settingsWin->setFocus();
     settingsWin->show();
-    settingsWin->move (this->pos().x() + 200, this->pos().y() + 150);
+    settingsWin->move (this->pos().x() + settingsWin->width() / 2, this->pos().y() + settingsWin->height() / 2);
 
     for (int i = 0; i < 7; i++)
     {
@@ -2562,6 +2546,7 @@ void MainWindow::colorChange()
 
     reloadStyles ();
     equalizerWin->reloadStyles();
+    settingsWin->reloadStyles();
 }
 
 //           --- Web Socket Functions ---
@@ -2755,9 +2740,6 @@ void MainWindow::removeMark() {
 
     drawMarksList();
 }
-void MainWindow::editMark() {
-
-}
 void MainWindow::drawMarksList () {
     marksList->clear();
 
@@ -2772,10 +2754,9 @@ void MainWindow::initTimerWindow() {
     timerWin = new QWidget();
     timerWin->setWindowFlags(Qt::Drawer);
     timerWin->setWindowTitle("Timer");
-    timerWin->setGeometry(0, 0, 300, 180);
-    timerWin->move(this->pos().x() + (this->width() - timerWin->width()) / 2, this->pos().y() + (this->height() - timerWin->height()) / 2);
     timerWin->setMaximumSize(300, 180);
     timerWin->setMinimumSize(300, 180);
+    timerWin->setGeometry(this->pos().x() + (this->width() - 300) / 2, this->pos().y() + (this->height() - 180) / 2, 300, 180);
     timerWin->setStyleSheet("background-color: #101010; color: silver;");
 
     QFormLayout form(timerWin);

@@ -56,15 +56,48 @@ VisualizationWindow::VisualizationWindow(QWidget * parent, HSTREAM * chan) : QWi
     minimizeBtn->setText(QString::fromStdWString(L"\uf2d1"));
     minimizeBtn->show();
 
+    previousBtn = new QPushButton(this);
+    previousBtn->setFont(fontAwesome);
+    previousBtn->setToolTip("Previous");
+    previousBtn->setStyleSheet("QPushButton { font-size: 24px; border: 0px solid silver; background-color: #101010; color: silver; border-top-right-radius: 5px; border-bottom-right-radius: 5px; }");
+    previousBtn->setGeometry(0, this->height() / 2 - 15, 30, 30);
+    previousBtn->setCursor(Qt::PointingHandCursor);
+    previousBtn->setText(QString::fromStdWString(L"\uf104"));
+    previousBtn->hide();
+
+    nextBtn = new QPushButton(this);
+    nextBtn->setFont(fontAwesome);
+    nextBtn->setToolTip("Next");
+    nextBtn->setStyleSheet("QPushButton { font-size: 24px; border: 0px solid silver; background-color: #101010; color: silver; border-top-left-radius: 5px; border-bottom-left-radius: 5px; }");
+    nextBtn->setGeometry(this->width() - 30, this->height() / 2 - 15, 30, 30);
+    nextBtn->setCursor(Qt::PointingHandCursor);
+    nextBtn->setText(QString::fromStdWString(L"\uf105"));
+    nextBtn->hide();
+
+    connect (previousBtn, &QPushButton::pressed, [=]() {
+        mode--;
+        if (mode < 0) mode = 2;
+    });
+    connect (nextBtn, &QPushButton::pressed, [=]() {
+        mode++;
+        if (mode > 2) mode = 0;
+    });
+
     connect (drawTimer, &QTimer::timeout, [=]() {
         if (this->isHidden()) return;
 
         repaint();
 
-        if (this->underMouse())
+        if (this->underMouse()) {
             titlebarWidget->show();
-        else
+            previousBtn->show();
+            nextBtn->show();
+        }
+        else {
             titlebarWidget->hide();
+            previousBtn->hide();
+            nextBtn->hide();
+        }
     });
 
     connect (closeBtn, &QPushButton::pressed, [=]() {
@@ -99,23 +132,40 @@ void VisualizationWindow::paintEvent(QPaintEvent * event) {
 
     if (mode == 0)
     {
+        float fft[2048];
+
+        BASS_ChannelGetData(*channel, fft, BASS_DATA_FFT4096);
+
         painter.setPen(QPen(QColor(255, 255, 255)));
         painter.setBrush(QBrush(QColor(0, 0, 0)));
 
         painter.drawEllipse((winSize.width() / 2) - 75, (winSize.height() / 2) - 75, 150, 150);
 
         float angle = PI;
-        int points = 3600;
+        int points = 1800;
 
-        for (int i = 0; i < points; i++)
+        for (int i = 0; i < points / 2; i++)
         {
+            int freq = sqrt(fft[i]) * 3 * 100 - 4;
+            if (freq < 0) freq = 0;
+            if (freq > 100) freq = 100;
+
             float x1 = (winSize.width() / 2) + 75 * sin(angle);
             float y1 = (winSize.height() / 2) + 75 * cos(angle);
 
-            float x2 = (winSize.width() / 2) + 75 * sin(angle) * (i / (float)points + 1.0);
-            float y2 = (winSize.height() / 2) + 75 * cos(angle) * (i / (float)points + 1.0);
+            float x2 = (winSize.width() / 2) + 75 * sin(angle) * (freq / 100.0f + 1.0);
+            float y2 = (winSize.height() / 2) + 75 * cos(angle) * (freq / 100.0f + 1.0);
 
             painter.drawLine(x1, y1, x2, y2);
+
+            x1 = (winSize.width() / 2) - 75 * sin(angle);
+            y1 = (winSize.height() / 2) + 75 * cos(angle);
+
+            x2 = (winSize.width() / 2) - 75 * sin(angle) * (freq / 100.0f + 1.0);
+            y2 = (winSize.height() / 2) + 75 * cos(angle) * (freq / 100.0f + 1.0);
+
+            painter.drawLine(x1, y1, x2, y2);
+
             angle -= PI / (points / 2);
         }
     }
@@ -169,47 +219,24 @@ void VisualizationWindow::paintEvent(QPaintEvent * event) {
 
         BASS_ChannelGetData(*channel, fft, BASS_DATA_FFT2048);
 
-        std::vector <int> peaks;
+        float sum = 0;
+        for (int i = 1; i <= 1024; i++)
+            sum += sqrt(fft[i]) * 3 * this->height() - 4;
 
-        for (int j = 0; j < 100; j++)
+        sum /= 256;
+        if (sum < 0) sum = 0;
+        if (sum > this->height()) sum = this->height();
+
+        globalPeaks.push_back(sum);
+        if (globalPeaks.size() > this->width())
+            globalPeaks.erase(globalPeaks.begin());
+
+        for (int i = 0; i < globalPeaks.size(); i++)
         {
-            int max = sqrt(fft[1]) * 3 * winSize.height() - 4;
-            for (int k = 2; k < 512; k++)
-            {
-                int value = sqrt(fft[k]) * 3 * winSize.height() - 4;
-
-                if (value < 0) value = 0;
-                if (value > winSize.height()) value = winSize.height();
-
-                if (value > max && count(peaks.begin(), peaks.end(), value) == 0)
-                    max = value;
-            }
-            peaks.push_back(max);
+            painter.setPen(QPen(QColor(255, 255, 255)));
+            painter.setBrush(QBrush(QColor(255, 255, 255)));
+            painter.drawRect(i, (this->height() - globalPeaks[i]) / 2, 1, globalPeaks[i]);
         }
-
-        for (int i = 0; i < 512; i++)
-        {
-            int blocksH = sqrt(fft[i + 1]) * winSize.height() * 3 - 4;
-
-            if (blocksH < 0) blocksH = 0;
-            if (blocksH > winSize.height()) blocksH = winSize.height();
-
-            if (count(peaks.begin(), peaks.end(), blocksH) != 0) {
-                peaks.erase(std::find(peaks.begin(), peaks.end(), blocksH));
-                painter.setPen(QPen(QColor(255, 0, 0)));
-                painter.setBrush(QBrush(QColor(255, 0, 0)));
-            } else {
-                painter.setPen(QPen(QColor(255, 255, 255)));
-                painter.setBrush(QBrush(QColor(255, 255, 255)));
-            }
-
-
-            painter.drawLine(i, winSize.height() - blocksH, i, (winSize.height() - blocksH) + blocksH);
-        }
-
-        painter.setPen(QPen(QColor(255, 0, 0)));
-        painter.setBrush(QBrush(QColor(255, 0, 0)));
-        painter.drawLine(0, winSize.height() - (winSize.height() * 0.05f), winSize.width(), winSize.height() - (winSize.height() * 0.05f));
     }
 }
 
