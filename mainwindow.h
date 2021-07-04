@@ -157,6 +157,7 @@ private slots:
         timerWin->raise();
         timerWin->setFocus();
         timerWin->show();
+        timerWin->move(this->x() + (this->width() - timerWin->width()) / 2, this->y() + (this->height() - timerWin->height()) / 2);
     }
     void marksShow () {
         marksWin->raise();

@@ -73,6 +73,8 @@ void PlaylistReader::readPlaylists (fifo_map <QString, vector <Song>> & playlist
                     }
 
                     if (!QFile::exists(temp.path)) continue;
+                    if (std::find(playlists[attribute_value].begin(), playlists[attribute_value].end(), temp) != playlists[attribute_value].end())
+                        continue;
 
                     TagLib::FileRef f(temp.path.toStdWString().c_str());
 

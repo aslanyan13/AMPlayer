@@ -1371,9 +1371,6 @@ void MainWindow::search(const QString & text)
     qDebug() << text;
     writeLog("Searching query: " + text);
 
-    if (text.length() == 1 && currentPlaylistName == playingSongPlaylist)
-        playlists[playingSongPlaylist][currentID] = playlist[currentID];
-
     searchInPlaylist(text);
     drawPlaylist();
 }
@@ -1435,6 +1432,7 @@ void MainWindow::drawPlaylist() {
 
         songItem->setData(Qt::UserRole, i);
         songItem->setText("[" + seconds2qstring(playlist[i].getDuration()) + "] " + name);
+        // songItem->setText(QString::number(i) + ". " + name);
 
         songItem->setToolTip("Name: " + name +
                              "\nDuration: " + seconds2qstring(playlist[i].getDuration()) +
@@ -2404,7 +2402,11 @@ void MainWindow::settings () {
     settingsWin->raise();
     settingsWin->setFocus();
     settingsWin->show();
-    settingsWin->move (this->pos().x() + settingsWin->width() / 2, this->pos().y() + settingsWin->height() / 2);
+
+    float x = this->pos().x() + (this->width() - settingsWin->width()) / 2;
+    float y = this->pos().y() + (this->height() - settingsWin->height()) / 2;
+
+    settingsWin->move (x, y);
 
     for (int i = 0; i < 7; i++)
     {

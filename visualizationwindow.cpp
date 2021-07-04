@@ -132,6 +132,7 @@ void VisualizationWindow::paintEvent(QPaintEvent * event) {
 
     if (mode == 0)
     {
+        globalPeaks = std::vector<int>();
         float fft[2048];
 
         BASS_ChannelGetData(*channel, fft, BASS_DATA_FFT4096);
@@ -170,6 +171,7 @@ void VisualizationWindow::paintEvent(QPaintEvent * event) {
         }
     }
     else if (mode == 1) {
+        globalPeaks = std::vector<int>();
         float fft[1024];
 
         BASS_ChannelGetData(*channel, fft, BASS_DATA_FFT2048);
